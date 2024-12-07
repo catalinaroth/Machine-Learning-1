@@ -1,0 +1,539 @@
+---
+title: "Machine Learning Methods: Analysing Barcelona Accommodations"
+author: "Martina Diaz, Fatima Barcina, Catalina Roth"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true          # Enables the table of contents
+    toc_depth: 3       # Control the depth of headers to include in the TOC
+    toc_float: true    # Makes the TOC float on the page
+  pdf_document:
+    toc: true          # Enables the table of contents for PDF output
+    toc_depth: 2       # Controls the depth of headers to include in the TOC
+  word_document:
+    toc: true          # Enables the table of contents for Word output
+    toc_depth: 2       # Controls the depth of headers to include in the TOC
+editor_options: 
+  chunk_output_type: html
+always_allow_html: true
+runtime: shiny
+---
+```{r path to download packages, include = FALSE}
+options(repos = c(CRAN = "https://cran.rstudio.com/"))
+#file.edit("~/.Rprofile")
+
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#options(repos = c(CRAN = "https://cran.rstudio.com/"))
+```
+
+```{r pressure, echo=FALSE, warning = FALSE, out.width = '50%'}
+knitr::include_graphics("Barcelona Picture.png")
+
+```
+
+
+```{r Packages, include=FALSE}
+install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot"))
+```
+
+
+```{r libraries, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(RColorBrewer)
+library(leaflet)
+library(shiny)
+library(leaflet.extras)
+library(RColorBrewer)
+library(mice)
+library(corrplot)
+library(knitr)
+```
+
+# 1. Introduction, motivations and presentation of the case
+
+## 1.1 Presentation of the case
+
+A tourism company based in Zürich, Switzerland, has observed a significant increase in travel demand to Barcelona in recent years. Indeed, Barcelona ranks as the third most in-demand city for Airbnb rentals in Europe, behind Paris and London.
+
+Consequently, the company’s manager has requested a Machine Learning study and analysis of Airbnb accommodations in the city. The goal is to understand price behavior and identify the factors influencing accommodation costs and occupancy, enabling the company to provide optimal responses to clients' inquiries.
+
+To achieve this goal, the team has decided to analyse and address three question to provide comprehensive insights for the manager.
+
+1. **What are the key factors influencing accommodation prices in Barcelona?**
+2. **Can we predict occupancy rates based on location, amenities, or other factors?**
+3. **How accurately can machine learning predict Airbnb prices in Barcelona? Which models perform best for this dataset?**
+
+## 1.2 Dataset
+
+To conduct the study, the team has decided to analyse a dataset of Barcelona Airbnbs available on the Kaggle website.
+
+The dataset consists of 19,833 observations across 25 variables, including geographical zones, amenities, prices, and accommodations.
+
+
+```{r dataset download, include=FALSE}
+# import the dataset
+BCN_Accomm_full <- read.csv("Cleaned_airbnb_barcelona.csv")
+
+# inspect the data set
+head(BCN_Accomm_full)
+str(BCN_Accomm_full)
+```
+
+
+```{r Name variables, echo=FALSE, message=FALSE}
+# Sort the column names
+sorted_names <- sort(names(BCN_Accomm_full))
+
+# Create a table
+column_table <- data.frame(Index = seq_along(sorted_names), Column_Name = sorted_names)
+kable(column_table, col.names = c("Index", "Column Name"), caption = "Sorted Column Names from Airbnb Dataset")
+```
+
+
+
+Do we want to indicate binary and binomial/multinomial data?
+
+
+## 1.3 Sub-sampling
+
+In the following steps, a sub-dataset will be created considering 10000 observation through a random selection.
+
+```{r sub-set, include=FALSE}
+set.seed(100)
+BCN_Accomm_sub <- sample_n(BCN_Accomm_full, 10000) 
+glimpse(BCN_Accomm_sub)
+summary(BCN_Accomm_full)
+```
+
+# 2. Methodology
+
+To answer the research questions, different methodologies are applied according to the data.
+
+- Linear Model (FB)
+- Generalised Linear Model with family set to Poisson for binary data (FB)
+- Generalised Linear Model with family set to Binomial for binomial and multinomial data (MD)
+- Generalised Additive Model for (CR)
+- Neural Network for (CR)
+- Support Vector Machine for (MD)
+
+# 3 Exploratory Data Analysis
+
+## 3.1 Converting Price variable to numeric
+
+```{r Convert price to numeric}
+BCN_Accomm_sub$price <- gsub(",", "", BCN_Accomm_sub$price) # removed ','
+BCN_Accomm_sub$price <- gsub("\\$", "", BCN_Accomm_sub$price) # removed '$' sign
+BCN_Accomm_sub$price <- as.numeric(BCN_Accomm_sub$price)  # converted to number format
+```
+
+## 3.1 Missing values (detect and treat) (MD) 
+
+```{r miss-values}
+print('Location of missing values')
+# find location of missing values column wise
+sapply(BCN_Accomm_sub, function(x) which(is.na(x)))
+# count the missing values column wise
+sapply(BCN_Accomm_sub, function(x) sum(is.na(x)))
+```
+
+```{r patt-miss-values}
+md.pattern(BCN_Accomm_sub, rotate.names = TRUE)
+```
+
+```{r tab-miss-values, echo = FALSE}
+# Total observations
+total_rows <- nrow(BCN_Accomm_sub) 
+
+# Calculate missing values (count and percentage)
+missing_values <- data.frame(
+  #Variable = names(BCN_Accomm_full),
+  Missing_Count = colSums(is.na(BCN_Accomm_sub)),
+  Missing_Percent = paste0(round((colSums(is.na(BCN_Accomm_sub)) / total_rows) * 100, 2), "%"))
+
+# Order DataFrame table in descending order
+missing_values <- missing_values[order(-missing_values$Missing_Count), ]
+
+# Display the table
+knitr::kable(missing_values, 
+             caption = "Missing Values by Variable",
+             align = "c")
+```
+
+**How to manage the missing values for each field.**
+host_listings_count : since is not possible to make any calculation on the number of listing of the host, we exclude the 22 rows that lack of it.
+bathrooms : the number of bathrooms is missing in 6 rows. 
+beds : the number of beds is not specified for 18 assets. 
+bedrooms : 2 rows contains missing value and can be deleted.
+review_scores_rating : the review score rating is missing in 2415 rows of 10000. It's a quite relevant percentage, around the 24% of the data we selected. In this case we decide to impute the missing values replacing it with the value 0.
+
+```{r imputation_review_score_rating}
+# Create a new data frame with the imputed review_scores_rating column
+imp_BCN_Accomm_sub <- BCN_Accomm_sub %>%
+  mutate(review_scores_rating = if_else(is.na(review_scores_rating), 0, review_scores_rating))
+
+md.pattern(imp_BCN_Accomm_sub, rotate.names = TRUE)
+```
+
+Eventually, the other fields that present missing values do not allow to replace the empty data with estimates (average, mean, ...) so called imputation. This fields include in total 48 assets that represent 0.48% of the total assets and allows to delete the entire rows without loosing too many information.
+
+```{r removing-rows}
+BCN_Accomm <- na.omit(imp_BCN_Accomm_sub) # from this point we'll use this data set
+md.pattern(BCN_Accomm, rotate.names = TRUE)
+```
+
+## 3.2 Correlation matrix
+
+```{r correlation_matrix_numeric_fields}
+# include price - use CR 
+# Create a correlation matrix for numeric fields
+cor_BNC_Accomm <- select_if(BCN_Accomm, is.numeric) %>%
+  select(-c(id, X, host_id))
+
+# make a data frame
+cor_BNC_Accomm <- data.frame(cor_BNC_Accomm)
+str(cor_BNC_Accomm)
+
+# print correlation matrix
+corrplot(cor(cor_BNC_Accomm), type = "upper", order = "hclust", tl.col = "black")
+```
+
+From the correlation matrix is possible to deduct the following characteristics:
+- there's almost no correlation between availability periods and number of beds, bedrooms, bathrooms. It would suggest that the availability of the house do not depend from those features, rather probably from the location and facilities.
+- there is a positive correlation between number of bedrooms, beds and bathrooms.
+- there is a positive correlation between the availability periods. 
+
+## 3.3 Outliers (boxplots) (detect and treat) (CR)
+
+### 3.1 Count of outliers in Price
+
+```{r Outliers for the variable Price, echo = FALSE}
+# Calculate Q1, Q3, and IQR for the price variable
+Q1 <- quantile(BCN_Accomm$price, 0.25)
+Q3 <- quantile(BCN_Accomm$price, 0.75)
+IQR <- Q3 - Q1
+
+# Add a column to indicate outliers 
+BCN_Accomm_sub_outlier <- BCN_Accomm %>%
+  mutate(is_outlier = price < (Q1 - 1.5 * IQR) | price > (Q3 + 1.5 * IQR))
+
+# Count the number of outliers
+outliers_count <- sum(BCN_Accomm_sub_outlier$is_outlier)
+
+# Display outliers count
+outliers_count
+
+```
+
+Minimum and Maximum for the outliers observations in the Price variable
+
+```{r Minimum and Maximun for the Outliers observation var Price, echo = FALSE}
+# Filter rows Outliers
+outlier_rows <- BCN_Accomm_sub_outlier %>%
+  filter(is_outlier == TRUE) %>%
+  select(price) %>%
+  arrange(desc(price))
+
+# Display Prices outliers
+knitr::kable(summary(outlier_rows), 
+             caption = "Outliers Price variable",
+             align = "c")
+```
+
+Detecting Top 20 Price Outliers
+
+```{r Filter outliers, echo = FALSE}
+# Filter rows Outliers
+outlier_extremes <- BCN_Accomm_sub_outlier%>%
+  filter(is_outlier == TRUE) %>%
+  select(neighbourhood, property_type, bedrooms, price) %>%
+  arrange(desc(price)) %>%
+  slice_head(n = 20)  # Select top 20 Outliers for price
+
+# Display Prices outliers
+knitr::kable(outlier_extremes, 
+             caption = "Top 20 and Outliers for Price Variable with Neighbourhood",
+             align = "c")
+```
+
+```{r Boxplot Price, echo= FALSE}
+# Boxplot for price variable
+boxplot(BCN_Accomm$price, 
+        horizontal = TRUE,
+        axes = FALSE, 
+        staplewex = 1, 
+        ylim = c(2, 500),
+        main = "Boxplot of Price Variable")  
+
+# X Axis
+axis(1, las = 1)
+
+# Add text labels values (Q1, Q3, IQR)
+stats <- boxplot.stats(BCN_Accomm$price)$stats
+text(x = stats, y = 1.25, labels = stats, pos = 3, cex = 0.9) 
+
+```
+
+### 3.3 Histograms (CR)
+
+```{r Histograms Numerical Variables, echo=FALSE, warning=FALSE}
+
+# Reshape the data set to long format
+BCN_Accomm_hist <- BCN_Accomm %>%
+  pivot_longer(cols = c(price,
+                        accommodates,
+                        bathrooms,
+                        bedrooms,
+                        beds,
+                        minimum_nights,
+                        number_of_reviews_ltm,
+                        review_scores_rating
+),  
+               names_to = "variable", values_to = "value")
+
+# Create histograms with facet_wrap
+ggplot(BCN_Accomm_hist, aes(x = value)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "black") +  
+  labs(title = "Histograms for Numerical Variables", x = "Value", y = "Frequency") +
+  facet_wrap(~variable, scales = "free") +  # each plot with their own y axes
+  theme_minimal()
+```
+
+### 3.4 Boxplots / Barplots (CR)
+
+Boxplots
+
+```{r Boxplots Numerical Variables, echo=FALSE}
+
+# Reshape the dataset to long format for selected variables and remove non-finite values
+BCN_Accomm_boxplot <- BCN_Accomm %>%
+  select(price, accommodates, bathrooms, bedrooms, beds, minimum_nights, number_of_reviews_ltm, review_scores_rating) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value") %>%
+  filter(is.finite(value))  # Remove rows with NA, Inf, or -Inf values
+
+# Create boxplots with adjusted axis limits
+ggplot(BCN_Accomm_boxplot, aes(y = value, x = variable, fill = variable)) +
+  geom_boxplot() +
+  labs(title = "Boxplots for Numerical Variables", x = "Variable", y = "Value") +
+  facet_wrap(~variable, scales = "free") +  # each plot with their own y axes
+  theme_minimal() +
+  theme(axis.text.x = element_blank(), legend.position = "none") 
+```
+
+Barplots
+
+```{r Barplots Categorical Variables, echo=FALSE}
+# Reshape the dataset to long format 
+BCN_Accomm_long <- BCN_Accomm %>%
+  pivot_longer(cols = c(room_type), names_to = "variable", values_to = "value")
+
+# Calculate the percentage for each category within the room_type variable
+BCN_Accomm_percentage <- BCN_Accomm_long %>%
+  group_by(variable, value) %>%
+  summarize(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create a barplot
+ggplot(BCN_Accomm_percentage, aes(x = value, y = percentage, fill = variable)) +
+  geom_bar(stat = "identity",fill = "skyblue") + 
+  labs(title = "Percentage Barplot for Room Type", x = "Category", y = "Percentage (%)") +
+  theme_minimal() + 
+  theme(legend.position = "none")
+```
+
+
+### 3.5 Summary Statistics (FB)
+
+
+
+## 4 Visualization Insights
+
+### 4.1 Airbnb locations by neighbourhood with Interactive panel 
+
+```{r  Airbnb locations, echo = FALSE}
+# Sample Shiny app for leaflet map with neighbourhood filter
+ui <- fluidPage(
+  titlePanel("Airbnb Prices by Neighbourhood"),
+  sidebarLayout(
+    sidebarPanel(
+      # Dropdown to select neighbourhood
+      selectInput("neighbourhood", "Select Neighbourhood:", choices = sort(unique(BCN_Accomm$neighbourhood)))
+    ),
+    mainPanel(
+      leafletOutput("map") # main content area where the map will be displayed
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  # Dropdown to select neighbourhood, sorted alphabetically
+  filtered_data <- reactive({
+    BCN_Accomm[BCN_Accomm$neighbourhood == input$neighbourhood, ]
+  })
+
+  # Render leaflet map
+  output$map <- renderLeaflet({
+    leaflet(filtered_data()) %>%
+      addTiles() %>%
+      setView(lng = 2.154007, lat = 41.390205, zoom = 12) %>% #Location of Barcelona
+      addCircleMarkers(
+        lng = ~longitude,
+        lat = ~latitude,
+        color = "red",
+        popup = ~paste("Price: €", price)
+      )
+  })
+}
+
+# Run the Shiny app
+shinyApp(ui, server)
+```
+
+### 4.2 Heatmap of prices
+
+```{r Heatmap of prices, echo = FALSE}
+# Mean price per neighbourhood 
+neighborhood_means <- BCN_Accomm %>%
+    group_by(neighbourhood) %>%
+    summarize(mean_price = mean(price, na.rm = TRUE),
+              latitude = mean(latitude, na.rm = TRUE),
+              longitude = mean(longitude, na.rm = TRUE))
+# Create Map
+
+leaflet(data = BCN_Accomm) %>%
+    addProviderTiles("CartoDB.Positron") %>%  
+    addHeatmap(
+        lng = ~longitude,
+        lat = ~latitude,
+        intensity = ~price,
+        blur = 25,       
+        max = 0.03,          
+        radius = 15    
+    ) %>%
+    addMarkers(
+        data = neighborhood_means,
+        ~longitude, ~latitude,
+        popup = ~paste(
+            "<strong>Neighborhood:</strong>", neighbourhood,
+            "<br><strong>Mean Price (€):</strong>", round(mean_price, 2)
+        )
+    ) %>%
+    addLegend(
+        "bottomright",
+        pal = colorNumeric("viridis", BCN_Accomm$price),
+        values = BCN_Accomm$price,
+        title = "Price (€)",
+        opacity = 0.7
+    )
+
+```
+
+## 4.3 Review Score Rating vs. Price by Room Type
+
+```{r Review Score Rating vs. Price by Room Type, echo = FALSE, warning=FALSE}
+#display.brewer.all() #Visualize color palette
+ggplot(BCN_Accomm, aes(x = review_scores_rating, y = price, color = room_type)) +
+  geom_point(alpha = 0.6) + 
+  #scale_color_brewer(palette = "Set2") +
+  labs(title = "Scatter Plot of Review Score Rating vs. Price by Room Type",
+       x = "Review Score Rating",
+       y = "Price",
+       color = "Room Type") + 
+  theme_minimal()
+
+```
+
+# 5 Machine Learning Models
+
+## 5.1 Linear Model
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.2 Generalised Linear Model with family set to Poisson
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.3 Generalised Linear Model with family set to Binomial
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.4 Generalised Additive Model
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.5 Neural Network
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.6 Support Vector Machine
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.7 Models comparison and evaluation (after models completed)
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+# 6. Use of Generative AI (notes from everyone to collect and formulate)
+– how you used generative AI in redacting the group work (code-related questions,
+generate text, explain concepts…)
+– what was easy/hard/impossible to do with generative AI
+– what you had to pay attention to/be critical about when using the results obtained
+through the use of generative AI
+
+# 7. Conclusions (together at the end)
+- Summary of key insights
+- Predictive Model Performance (can we answer our research questions?)
+- Implications
+- Limitations
+- Future work 
+
+# 8. Appendix (CR)
+Table with the description of every variable and the type
+
+# 9. References 
+- website
+- literature
+
+
+
+
+
