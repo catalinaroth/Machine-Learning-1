@@ -348,8 +348,152 @@ ggplot(BCN_Accomm_percentage, aes(x = value, y = percentage, fill = variable)) +
 
 
 ### 3.5 Summary Statistics (FB)
+This section provides a comprehensive statistical overview of the dataset, categorized into numerical and categorical variables
+
+### 3.5.1 Numeric Variables
+This section summarizes statistics for the numerical variables in the
+dataset. The analysis is divided into two parts:
+
+#### Overall Summary: High level statistical overview of all numeric
+#### variables in the dataset.
+
+```{r}
+#Concise statistical summary of all the numeric variables:
+
+# Filter numeric variables
+numeric_variables <- BCN_Accomm %>%   #BCN_Accomm
+  select(where(is.numeric))
+
+# Display the summary directly
+summary(numeric_variables)
+
+```
+
+```{r summary-numeric-variables, echo=TRUE}
+# Filter numeric variables
+numeric_variables <- BCN_Accomm %>%   #BCN_Accomm
+  select(where(is.numeric))
+
+# Calculate descriptive statistics for each numeric variable
+numeric_summary <- data.frame(
+  Min = round(sapply(numeric_variables, min, na.rm = TRUE), 2),
+  `1st Qu.` = round(sapply(numeric_variables, quantile, probs = 0.25, na.rm = TRUE), 2),
+  Median = round(sapply(numeric_variables, median, na.rm = TRUE), 2),
+  Mean = round(sapply(numeric_variables, mean, na.rm = TRUE), 2),
+  `3rd Qu.` = round(sapply(numeric_variables, quantile, probs = 0.75, na.rm = TRUE), 2),
+  Max = round(sapply(numeric_variables, max, na.rm = TRUE), 2)
+)
 
 
+# Transpose the table to display variables as rows
+numeric_summary <- (numeric_summary)
+
+# Display the table in the report
+knitr::kable(numeric_summary, 
+             caption = "Summary Statistics for Numeric Variables", 
+             align = "c")
+
+```
+
+#### Focused Analysis
+
+The tables below summarize key descriptive statistics for numerical
+variables, grouped into two categories:
+
+-   Price Variables: Metrics influencing or reflecting accommodation
+    pricing, such as room features and customer ratings.
+
+```{r summary-numeric-variables, echo=TRUE}
+# Filter relevant columns for objective
+# 1. Variables to analyze price
+  
+price_variables <- BCN_Accomm %>%
+  select(accommodates, bathrooms, bedrooms, beds, 
+         price, review_scores_rating, number_of_reviews_ltm)
+
+# Calculate descriptive statistics
+# For analyzing price
+price_stats <- data.frame(
+  Mean = round(sapply(price_variables, mean, na.rm = TRUE), 2),
+  Median = round(sapply(price_variables, median, na.rm = TRUE), 2),
+  Standard_Deviation = round(sapply(price_variables, sd, na.rm = TRUE), 2),
+  Min = round(sapply(price_variables, min, na.rm = TRUE), 2),
+  Max = round(sapply(price_variables, max, na.rm = TRUE), 2)
+)
+
+# Transpose the tables to display variables as columns
+price_stats <- (price_stats)
+
+# Display the table in the report
+knitr::kable(price_stats, 
+             caption = "Summary Statistics for Variables Related to Price", 
+             align = "c")
+```
+
+
+  -   Availability Variables: Metrics related to listing availability over
+      different time periods.
+
+```{r summary-numeric-variables, echo=TRUE}
+# 2. Variables to analyze availability
+availability_variables <- BCN_Accomm %>%
+  select(minimum_nights, availability_30, availability_60, 
+         availability_90, availability_365)
+
+
+# Calculate descriptive statistics
+# For analyzing availability
+availability_stats <- data.frame(
+  Mean = round(sapply(availability_variables, mean, na.rm = TRUE), 2),
+  Median = round(sapply(availability_variables, median, na.rm = TRUE), 2),
+  Standard_Deviation = round(sapply(availability_variables, sd, na.rm = TRUE), 2),
+  Min = round(sapply(availability_variables, min, na.rm = TRUE), 2),
+  Max = round(sapply(availability_variables, max, na.rm = TRUE), 2)
+)
+
+# Transpose the tables to display variables as columns
+availability_stats <- (availability_stats)
+
+
+# Display the table in the report
+knitr::kable(availability_stats, 
+             caption = "Summary Statistics for Variables Related to Availability", 
+             align = "c")
+```
+
+### 3.5.3 Summary Statistics for Categorical Variables
+
+The analysis highlights the frequency and percentage distribution of the most relevant categorical variables, providing insight into their prevalence. For clarity, only the top 20 categories for each variable, ordered by frequency, are displayed.
+
+```{r categorical-summary, echo=TRUE}
+# Select the most relevant categorical variables
+categorical_variables <- BCN_Accomm %>%
+  select(host_is_superhost, neighbourhood, zipcode, property_type, room_type, has_availability)
+
+# Calculate frequency and relative frequency
+categorical_summary <- lapply(categorical_variables, function(var) {
+  freq <- table(var)  # Absolute frequency
+  rel_freq <- prop.table(freq) * 100  # Relative frequency
+  data <- data.frame(
+    Category = names(freq),
+    Frequency = as.vector(freq),
+    Percentage = round(as.vector(rel_freq), 2)
+  )
+   data <- data[order(-data$Frequency), ]  # Ensure sorting by frequency
+  data <- head(data, 20)  # Keep only the top 20 categories
+  data  # Return the top 20 sorted rows
+})
+
+# Display results in the report for each categorical variable
+for (var_name in names(categorical_summary)) {
+  cat("\n### Variable:", var_name, "\n\n")
+  print(knitr::kable(
+    categorical_summary[[var_name]],
+    caption = paste("Summary for", var_name, "(Ordered by Frequency)"),
+    align = "c"
+  ))
+}
+```
 
 ## 4 Visualization Insights
 
