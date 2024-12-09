@@ -34,7 +34,7 @@ knitr::include_graphics("Barcelona Picture.png")
 ```
 
 ```{r Packages, include=FALSE}
-install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud"))
+install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud", "mgcv", "gratia"))
 ```
 
 ```{r libraries, include=FALSE}
@@ -51,6 +51,8 @@ library(corrplot)
 library(knitr)
 library(treemap)
 library(wordcloud)
+library(mgcv) # GAM
+library(gratia)
 ```
 
 # 1. Introduction
@@ -621,13 +623,154 @@ It is used to analyse  .... and answer the project question x
 - R Squared
 
 ## 5.4 Generalised Additive Model
-It is used to analyse  .... and answer the project question x
-- Accurancy
-- Precision
-- Recall
-- RMSE (Root Mean Squared Error)
-- MAE (Mean Absolute Error)
-- R Squared
+In this chapter, Generalized Additive Models (GAMs) will be applied with the Price variable as the response, to analyze its interactions with the predictor variables.
+
+The first goal is to identify key factors influencing prices in Barcelona, addressing Research Question 1.
+
+First, we aim to determine whether a nonlinear relationship exists between the independent variables and price. To explore this, the variable Review Score Rating will be plotted against Price to visualize whether the relationship is linear or not.
+
+```{r Price Vs Number of Bedrooms, echo=FALSE}
+# Bedrooms vs Price
+ggplot(BCN_Accomm, aes(x = review_scores_rating, y = price)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "loess", color = "red") + # Loess: on-parametric method for fitting a curve to the data.
+  labs(title = "Price vs Review Score Ratings", x = "Review Score Rating", y = "Price")+
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+From the plot above and Chapter 4.3 of this report, we observe that many points are concentrated on the right side, where higher review scores are paired with lower prices. This suggests a lack of a strong relationship between Review Score Ratings and Price.
+
+Given that at least one variable does not exhibit a linear relationship, we will proceed with applying a Generalized Additive Model (GAM) to better capture potential nonlinear interactions.
+
+Next, the variables Room Type and Host is Super Host will be converted into factors to ensure they are treated as categorical variables in the analysis.
+
+```{r convert factors}
+# Covert the categorical as a Factor and not incluide missing values
+data_cleaned <- BCN_Accomm %>%
+  filter(!is.na(price), !is.na(latitude), !is.na(longitude), !is.na(room_type), !is.na(bedrooms), !is.na(bathrooms)) %>% # Not include Missing Values
+  mutate(
+    room_type = as.factor(room_type),             # Convert room_type to a factor
+    host_is_superhost = as.factor(host_is_superhost)  # Convert host_is_superhost to a factor
+  )
+```
+
+The first GAM will be a simple model using latitude, longitude, and review score rating as predictors, each fitted with smoothers to capture potential nonlinear relationships. 
+
+Latitude and longitude are included in the model since the location of an Airbnb is expected to impact the rental price. Similarly, feedback from previous clients, reflected in the review score rating, is considered an important factor influencing price.
+
+$$
+Price = \beta_0 + f_1(latitude, longitude) + f_2(review\_scores\_rating)  + \epsilon
+$$
+```{r Model_Gam, echo=FALSE, warning=FALSE}
+# Fit a GAM
+model_gam <- gam(price ~ s(latitude, longitude) + s(review_scores_rating),
+                 data = data_cleaned)
+
+# Summarize the model
+summary(model_gam)
+
+```
+
+From the model, we can derive the following insights:
+
+## Insights from the First Model
+
+### **Parametric Coefficients**
+- The baseline price of an Airbnb is **127.964 Euros** (\( B_0 \)), representing the baseline price before accounting for other factors.
+  - This value is adjusted based on the property's specific location (latitude and longitude) and the feedback provided by users (Review Score Rating).
+
+### **Smooth Term for Latitude and Longitude**
+- **Effective Degrees of Freedom (edf):**  
+  - Equal to **25.5**, indicating a highly complex **non-linear relationship** between latitude/longitude and price.
+- **P-value:**  
+  - \( < 2e-16 \), suggesting that the smooth term is **highly significant**, and there is a strong relationship with price.
+
+### **Smooth Term for Review Score Rating**
+- **Effective Degrees of Freedom (edf):**  
+  - Equal to **7.4**, also showing a **non-linear relationship** with price, though less strong than latitude/longitude.
+- **P-value:**  
+  - \( < 2e-16 \), indicating that the smooth term is **highly significant**, and there is a strong relationship with price.
+
+### **Model Performance**
+- The **R-squared value** is quite low (**2.54%**), suggesting that other important variables influencing Airbnb prices might be missing from the model.
+
+```{r}
+# Plot f(review_scores_rating) vs. Price
+plot_review_scores <- ggplot(data_cleaned, aes(x = review_scores_rating, y = price)) +
+  stat_smooth(method = "gam", color = "red", formula = y ~ s(x, k = 5)) +  # Smooth line for review scores
+  geom_point(aes(color = price)) +  # Points with color based on price
+  labs(title = "Price vs. Review Score Rating", x = "Review Score Rating", y = "Price") +
+  theme_minimal()
+
+print(plot_review_scores)
+```
+
+---
+
+## Improvements for the Second Model
+
+- The **Room Type** variable will be added as a smooth term to capture differences in price based on the type of listing.
+- Additionally, the **interaction between latitude and longitude, grouped by Room Type**, will be incorporated. 
+  - This enhancement accounts for the fact that the price of a listing can vary based on its **location** and the **type of room offered**.
+
+
+
+$$
+Price = \beta_0 + f_1(latitude, longitude \,|\, room\_type) + f_2(review\_scores\_rating) + \beta_1(room\_type) + \epsilon
+$$
+```{r Model_gam_2, echo=FALSE, warning=FALSE}
+model_gam_2 <- gam(price ~ s(latitude, longitude, by = room_type) + s(review_scores_rating) + room_type,
+                         data = data_cleaned)
+
+summary(model_gam_2)
+```
+
+From the second model, we can derive the following insights:
+
+## Insights from the Second Model
+
+### **Parametric Coefficients**
+- **Baseline Price (Intercept):**  
+  - The baseline price of an Airbnb is **169.740 Euros** (\( B_0 \)), representing the baseline price for an Entire Home/Apt before accounting for latitude/longitude and Review Score Rating factors.
+  - This value is adjusted based on the property's specific location (latitude and longitude) and the feedback provided by users (Review Score Rating).
+- **Room Type: Private Room:**  
+  - The coefficient is **-90.287**, meaning Airbnbs classified as Private Rooms are, on average, **90 Euros cheaper** than Entire Homes/Apts.
+  - The **p-value (< 2e-16)** shows that this difference is statistically significant.
+- **Room Type: Shared Room:**  
+  - The coefficient is **-39.019**, meaning Shared Rooms are, on average, **39 Euros cheaper** than Entire Homes/Apts.
+  - However, the **p-value (0.655)** suggests that this difference is **not statistically significant**.
+
+### **Smooth Term for Latitude and Longitude**
+- **Effective Degrees of Freedom (edf):**  
+  - Varies from **16.12 to 25.44**, indicating a **non-linear relationship** between location and price, depending on the room type.
+- **P-Values:**  
+  - The smooth terms for **Entire Home/Apt** and **Shared Room** are **highly significant** (\( p < 2e-16 \)).
+  - For **Private Room**, the effect is less significant (\( p = 0.0013 \)).
+
+### **Smooth Term for Review Score Rating**
+- **Effective Degrees of Freedom (edf):**  
+  - Equal to **7.28**, showing a **non-linear relationship** with price, though less strong compared to latitude/longitude.
+- **P-Value:**  
+  - The smooth term is **highly significant** (\( p < 2e-16 \)), indicating a strong relationship with price.
+
+### **Model Performance**
+- The **R-squared value (7.79%)** is much better than the first GAM, suggesting that the model explains more variability in Airbnb prices.
+- However, this also indicates that **other important variables** influencing Airbnb prices might still be missing from the model.
+
+$$
+Price = \beta_0 + f_1(latitude, longitude) + f_2(review\_scores\_rating) + f_3(bathrooms) + f_4(bedrooms) + \beta_1(room\_type) + \beta_2(host\_is\_superhost) + \epsilon
+$$
+```{r Model_gam_3, echo=FALSE, warning=FALSE}
+model_gam_3 <- gam(price ~ s(latitude, longitude) + s(review_scores_rating) + s(bathrooms) + s(bedrooms) + room_type + host_is_superhost,
+                         data = data_cleaned)
+
+summary(model_gam_3)
+```
+
+
+
 
 ## 5.5 Neural Network
 It is used to analyse  .... and answer the project question x
