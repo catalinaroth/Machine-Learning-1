@@ -523,7 +523,9 @@ server <- function(input, output, session) {
         lng = ~longitude,
         lat = ~latitude,
         color = "blue",
-        popup = ~paste("Price: €", price)
+        popup = ~paste("<b>Price:</b> €", price, "<br>",
+          "<b>Type:</b>", room_type, "<br>",
+          "<b>Neighbourhood:</b>", neighbourhood)
       )
   })
 }
@@ -730,8 +732,31 @@ ggplot(test_data, aes(x = price, y = predicted_price)) +
 ```
 
 
-** Cross-Validation**
-```{r Cross Validation 1}
+```{r}
+# test_dataset <- data_cleaned %>%
+#  filter(price <= quantile(price, 0.99, na.rm = TRUE) & availability_365 > 0)
+
+test_dataset <- data_cleaned %>%
+  filter(price <= 1000 & availability_365 > 0)
+
+# Split the data (80% train, 20% test)
+set.seed(123) 
+data_split <- initial_split(test_dataset, prop = 0.8)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+# Fit a GAM
+model_gam_train <- gam(price ~ s(latitude, longitude) + s(accommodates) + s(bathrooms) +
+                 s(bedrooms) + s(beds) + s(review_scores_rating) + s(host_listings_count) +
+                 s(availability_365) + room_type + property_type + host_is_superhost,
+                 data = train_data)
+
+
+# Summarize the model
+summary(model_gam_train)
+
+summary(test_data$price)
+
 
 ```
 
