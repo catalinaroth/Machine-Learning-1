@@ -34,27 +34,32 @@ knitr::include_graphics("Barcelona Picture.png")
 ```
 
 ```{r Packages, include=FALSE}
-install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud", "mgcv", "gratia", "rsample", "Metrics"))
+# Instal requiered packages
+install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud", "mgcv", "gratia", "rsample", "Metrics", "forcats", "VGAM", "e1071"))
 ```
 
 ```{r libraries, include=FALSE}
-library(dplyr)
-library(ggplot2)
-library(tidyr)
-library(RColorBrewer)
-library(leaflet)
-library(shiny)
-library(leaflet.extras)
-library(RColorBrewer)
-library(mice)
-library(corrplot)
-library(knitr)
-library(treemap)
-library(wordcloud)
-library(mgcv) # GAM
-library(gratia)
-library(rsample)
-library(Metrics)
+# Load required libraries
+library(dplyr)        # Data manipulation and wrangling
+library(ggplot2)      # Data visualization
+library(tidyr)        # Data tidying
+library(RColorBrewer) # Color palettes for visualizations
+library(leaflet)      # Interactive maps
+library(shiny)        # Building interactive web applications
+library(leaflet.extras) # Additional features for leaflet maps
+library(corrplot)     # Visualization of correlation matrices
+library(mice)         # Handling missing data
+library(nnet)         # Multinomial regression model
+library(forcats)      # Handling categorical variables
+library(patchwork)    # Combining multiple ggplots
+library(VGAM)         # Multinomial logistic regression models
+library(tidyverse)    # Collection of data science packages
+library(e1071)        # Support Vector Machines (SVM)
+library(reshape2)     # Data reshaping for ggplot visualizations
+library(caret)        # Machine learning and model evaluation
+library(wordcloud)    # Wordcloud plot
+library(rsample)      # Split dataset into training and testing
+library(mgcv)         # Gam Mdels
 ```
 
 # 1. Introduction
@@ -134,8 +139,6 @@ glimpse(BCN_Accomm_full)
 
 As can be appreciated, the variable 'price' has a 'Character' data type. Therefore, in the chapter 3, this field will be transformed into an integer variable to enable the necessary calculations.
 
-(Do we want to indicate binary and binomial/multinomial data?)
-
 ## 1.5 Sub-sampling
 
 In order to streamline the calculations and analysis, a sub-dataset will be created in the following steps, considering 10.000 observations selected randomly. Additionally, a seed is created to ensure the same observations are maintained throughout the analysis
@@ -163,23 +166,29 @@ The different models to be developed are:
 
 ## 3.1 Converting Price variable to numeric
 
+First, the pricing variable will be converted into a numeric format, and in the fifth chapter of this report (Machine Learning Models), the categorical variables will be transformed into factors for further analysis and modeling.
+
 ```{r Convert price to numeric}
 BCN_Accomm_sub$price <- gsub(",", "", BCN_Accomm_sub$price) # removed ','
 BCN_Accomm_sub$price <- gsub("\\$", "", BCN_Accomm_sub$price) # removed '$' sign
 BCN_Accomm_sub$price <- as.numeric(BCN_Accomm_sub$price)  # converted to number format
 ```
 
-## 3.1 Missing values (detect and treat) (MD) 
+## 3.2 Missing values (detect and treat) (MD) 
 
-```{r miss-values}
+```{r miss-values, include=FALSE}
 print('Location of missing values')
 # find location of missing values column wise
 sapply(BCN_Accomm_sub, function(x) which(is.na(x)))
+
+```
+
+```{r Count missing values per columns, echo =FALSE}
 # count the missing values column wise
 sapply(BCN_Accomm_sub, function(x) sum(is.na(x)))
 ```
 
-```{r patt-miss-values}
+```{r patt-miss-values, echo = FALSE}
 md.pattern(BCN_Accomm_sub, rotate.names = TRUE)
 ```
 
@@ -202,14 +211,15 @@ knitr::kable(missing_values,
              align = "c")
 ```
 
-**How to manage the missing values for each field.**
+## 3.2.1 How to manage Missing values for each field (MD) 
+
 host_listings_count : since is not possible to make any calculation on the number of listing of the host, we exclude the 22 rows that lack of it.
 bathrooms : the number of bathrooms is missing in 6 rows. 
 beds : the number of beds is not specified for 18 assets. 
 bedrooms : 2 rows contains missing value and can be deleted.
 review_scores_rating : the review score rating is missing in 2415 rows of 10000. It's a quite relevant percentage, around the 24% of the data we selected. In this case we decide to impute the missing values replacing it with the value 0.
 
-```{r imputation_review_score_rating}
+```{r imputation_review_score_rating, echo = FALSE}
 # Create a new data frame with the imputed review_scores_rating column
 imp_BCN_Accomm_sub <- BCN_Accomm_sub %>%
   mutate(review_scores_rating = if_else(is.na(review_scores_rating), 0, review_scores_rating))
@@ -219,16 +229,15 @@ md.pattern(imp_BCN_Accomm_sub, rotate.names = TRUE)
 
 Eventually, the other fields that present missing values do not allow to replace the empty data with estimates (average, mean, ...) so called imputation. This fields include in total 48 assets that represent 0.48% of the total assets and allows to delete the entire rows without loosing too many information.
 
-```{r removing-rows}
+```{r removing-rows, include = FALSE}
 BCN_Accomm <- na.omit(imp_BCN_Accomm_sub) # from this point we'll use this data set
 md.pattern(BCN_Accomm, rotate.names = TRUE)
 ```
 
-## 3.2 Correlation matrix
+## 3.3 Correlation matrix
 
 ```{r correlation_matrix_numeric_fields}
-# include price - use CR 
-# Create a correlation matrix for numeric fields
+# Create a correlation matrix for numeric fields
 cor_BNC_Accomm <- select_if(BCN_Accomm, is.numeric) %>%
   select(-c(id, X, host_id))
 
@@ -245,10 +254,10 @@ From the correlation matrix is possible to deduct the following characteristics:
 - there is a positive correlation between number of bedrooms, beds and bathrooms.
 - there is a positive correlation between the availability periods. 
 
-## 3.3 Outliers (boxplots) (detect and treat) (CR)
+## 3.4 Outliers (boxplots) (detect and treat) (CR)
 Since the price variable is a key focus of our analysis, an outlier analysis of this variable has been conducted.
 
-### 3.1 Count of outliers in Price
+### 3.4.1 Count of outliers in Price
 
 ```{r Outliers for the variable Price, echo = FALSE}
 # Calculate Q1, Q3, and IQR for the price variable
@@ -293,7 +302,7 @@ Additionally, the presence of numerous outliers extending to the right indicates
 
 The significant number of observations with higher prices could suggest the presence of many luxury properties. Therefore, further analysis is required to identify the factors influencing these price variations.
 
-### Detecting Top 20 Price Outliers
+### 3.4.2 Detecting Top 20 Price Outliers
 
 ```{r Filter outliers, echo = FALSE}
 # Filter rows Outliers
@@ -309,8 +318,32 @@ knitr::kable(outlier_extremes,
              align = "c")
 ```
 
+It seems that the price variable may contain erroneous entries. For further analysis, research revealed that the average nightly rate for an Airbnb in Barcelona is €93 (according to <span style="color:blue">Hostel Geeks, link: https://hostelgeeks.com/best-airbnbs-in-barcelona-spain/</span>). Therefore, prices of €8,000 are likely errors. As a result, it was decided to exclude prices above €1,000 from the analysis.
 
-### 3.3 Histograms for Numerical Variables(CR)
+The new summary for tha Price variable is the following:
+
+```{r Filter price lesss than 1000, echo=FALSE}
+# Filter dataset
+BCN_Accomm <- BCN_Accomm %>%
+  filter(price <= 1000)
+
+summary(BCN_Accomm$price)
+```
+
+```{r New correlation_matrix_numeric_fields, echo = FALSE}
+# Create a correlation matrix for numeric fields
+cor_BNC_Accomm_new <- select_if(BCN_Accomm, is.numeric) %>%
+  select(-c(id, X, host_id))
+
+# make a data frame
+cor_BNC_Accomm_new <- data.frame(cor_BNC_Accomm_new)
+str(cor_BNC_Accomm)
+
+# print correlation matrix
+corrplot(cor(cor_BNC_Accomm_new), type = "upper", order = "hclust", tl.col = "black")
+```
+
+### 3.5 Histograms for Numerical Variables(CR)
 
 ```{r Histograms Numerical Variables, echo=FALSE, warning=FALSE}
 
@@ -476,7 +509,6 @@ wordcloud(words = names(word_freq),
           scale = c(3, 0.5),               # Word size scale
           random.order = FALSE,            # Words ordered by frequency
           colors = brewer.pal(8, "Dark2"))
-
 ```
 
 The Wordcloud above, provides the most common amenities offered by the different hosts. 
@@ -494,12 +526,12 @@ This section was designed to allow the employees of the Tourism Company and othe
 The purpose of the following interactive plot is to allow users to select a neighborhood of interest and visualize, on a map, the different accommodations available along with their price per night when one of the circles is clicked.
 
 ```{r  Airbnb locations, echo = FALSE}
-# Sample Shiny app for leaflet map with neighbourhood filter
+# Sample Shiny app for leaflet map with neighborhood filter
 ui <- fluidPage(
   titlePanel("Airbnb Prices by Neighbourhood"),
   sidebarLayout(
     sidebarPanel(
-      # Dropdown to select neighbourhood
+      # Drop down to select neighborhood
       selectInput("neighbourhood", "Select Neighbourhood:", choices = sort(unique(BCN_Accomm$neighbourhood)))
     ),
     mainPanel(
@@ -594,37 +626,52 @@ ggplot(BCN_Accomm, aes(x = review_scores_rating, y = price, color = room_type)) 
 ```
 
 From the plot above, the following insights can be derived:
-- The majority of listings are concentrated at the lower price range (below 2000 USD), irrespective of room type.
-- Accommodations with high review scores (exceeding 90) are distributed across all price categories, indicating that well-reviewed Airbnbs are not restricted to a particular room type or price range.
+- The majority of listings are concentrated at the lower price range (below 250 Euros), irrespective of room type.
+- Accommodations with high review scores (exceeding 90 points) are distributed across all price categories, indicating that well-reviewed Airbnbs are not restricted to a particular room type or price range.
 
 # 5 Machine Learning Models
 
-## 5.1 Linear Model
-It is used to analyse  .... and answer the project question x
-- Accurancy
-- Precision
-- Recall
-- RMSE (Root Mean Squared Error)
-- MAE (Mean Absolute Error)
-- R Squared
+As mentioned in the previous chapters, the categorical variables are converted into factors to proceed with the modeling phase.
 
-## 5.2 Generalised Linear Model with family set to Poisson
-It is used to analyse  .... and answer the project question x
-- Accurancy
-- Precision
-- Recall
-- RMSE (Root Mean Squared Error)
-- MAE (Mean Absolute Error)
-- R Squared
+```{r Covert categorical variables into factors}
+# converting categorical variables into factors
+BCN_Accomm$neighbourhood <- as.factor(BCN_Accomm$neighbourhood)
+BCN_Accomm$property_type <- as.factor(BCN_Accomm$property_type)
+BCN_Accomm$room_type <- as.factor(BCN_Accomm$room_type)
+BCN_Accomm$zipcode <- as.factor(BCN_Accomm$zipcode)
+BCN_Accomm$availability_30 <- as.factor(BCN_Accomm$availability_30)
+BCN_Accomm$accommodates <- as.factor(BCN_Accomm$accommodates)
+```
 
-## 5.3 Generalised Linear Model with family set to Binomial
-It is used to analyse  .... and answer the project question x
-- Accurancy
-- Precision
-- Recall
-- RMSE (Root Mean Squared Error)
-- MAE (Mean Absolute Error)
-- R Squared
+## Train and Test data
+
+```{r zipcode_cleaning, include = FALSE}
+# Replace invalid zipcodes with "unknown"
+BCN_Accomm$zipcode <- ifelse(
+  grepl("^[0-9]{4}$", BCN_Accomm$zipcode),   # Check if zipcode is exactly 4 digits
+  BCN_Accomm$zipcode,                        # Keep valid zipcodes
+  "unknown")                                # Replace invalid zipcodes with "unknown"
+```
+
+Before analysing the different models, we need to divide the data into a training set and test set.
+The first set will be used to find the relationship between dependent and independent variable, while the second set will be used to analyse the performance of the models. 
+We decide to use 60% of the data set as a training set, and the rest as a test set.
+
+```{r Train and Test split}
+set.seed(1000)
+# Define the number of groups and the amount of sample for each
+group <- sample(2, nrow(BCN_Accomm),
+                replace = TRUE,
+                prob = c(0.4, 0.4))
+
+# training data set with around 60% of the samples
+train <- BCN_Accomm[group==1,]
+
+# test data set with around 40% of the samples
+test <- BCN_Accomm[group==2,]
+```
+
+
 
 ## 5.4 Generalised Additive Model
 In this chapter, Generalized Additive Models (GAMs) will be applied with the Price variable as the response, to analyze its interactions with the predictor variables.
@@ -650,16 +697,6 @@ Given that at least one variable does not exhibit a linear relationship, we will
 
 Next, the variables Room Type and Host is Super Host will be converted into factors to ensure they are treated as categorical variables in the analysis.
 
-```{r convert factors}
-# Covert the categorical as a Factor and not incluide missing values
-data_cleaned <- BCN_Accomm %>%
-  filter(!is.na(price), !is.na(latitude), !is.na(longitude), !is.na(room_type), !is.na(bedrooms), !is.na(bathrooms)) %>% # Not include Missing Values
-  mutate(
-    room_type = as.factor(room_type),            
-    host_is_superhost = as.factor(host_is_superhost),
-    neighbourhood = as.factor(neighbourhood)
-  )
-```
 
 The  GAM will be a  model using latitude, longitude,review score rating, number of bathrooms and bedrooms and room type as predictors. 
 
@@ -668,98 +705,6 @@ Latitude and longitude are included in the model since the location of an Airbnb
 $$
 \text{Price} = \beta_0 + f_1(\text{latitude}, \text{longitude}) + f_2(\text{accommodates}) + f_3(\text{bathrooms}) + f_4(\text{bedrooms}) + f_5(\text{beds}) + f_6(\text{review\_scores\_rating}) + f_7(\text{host\_listings\_count}) + f_8(\text{availability\_365}) + \beta_1(\text{room\_type}) + \beta_2(\text{property\_type}) + \beta_3(\text{host\_is\_superhost}) + \beta_4(\text{neighbourhood}) + \epsilon
 $$
-```{r Split Data train and test}
-# Split the data (80% train, 20% test)
-set.seed(123) 
-data_split <- initial_split(data_cleaned, prop = 0.8)
-train_data <- training(data_split)
-test_data <- testing(data_split)
-```
-
-```{r Model_Gam, echo=FALSE, warning=FALSE}
-# Fit a GAM
-model_gam_train <- gam(price ~ s(latitude, longitude) + s(accommodates) + s(bathrooms) +
-                 s(bedrooms) + s(beds) + s(review_scores_rating) + s(host_listings_count) +
-                 s(availability_365) + room_type + property_type + host_is_superhost,
-                 data = train_data)
-
-
-# Summarize the model
-summary(model_gam_train)
-
-```
-
-From the model, we can derive the following insights:
-
-## Insights from the First Model
-
-### **Parametric Coefficients**
-- The baseline price of an Airbnb is 156.057 Euros (\( B_0 \)), representing the baseline price before accounting for other factors.
-  - This value is adjusted based on the property's specific location (latitude and longitude) and the feedback provided by users (Review Score Rating).
-
-### **Smooth Term for Latitude and Longitude**
-- **Effective Degrees of Freedom (edf):**  
-  - Equal to 19.53, indicating a highly complex non-linear relationship between latitude/longitude and price.
-- **P-value:**  
-  - \( < 2e-16 \), suggesting that the smooth term is highly significant, and there is a strong relationship with price.
-
-### **Smooth Term for Review Score Rating**
-- **Effective Degrees of Freedom (edf):**  
-  - Equal to 7.41, also showing a non-linear relationship with price, though less strong than latitude/longitude.
-- **P-value:**  
-  - \( < 2e-16 \), indicating that the smooth term is highly significant, and there is a strong relationship with price.
-
-### **Model Performance**
-- The R-squared value is quite low (4.51%), suggesting that other important variables influencing Airbnb prices might be missing from the model.
-
-Now, we will proceed to generate the predictions for the price variable:
-
-```{r Predict Price, First Model, include=FALSE}
-# Predict on the test data
-test_data$predicted_price <- predict(model_gam_train, newdata = test_data)
-
-```
-
-
-** Visualization**
-```{r Visualization model 1, echo=FALSE}
-# Plot actual vs predicted prices
-ggplot(test_data, aes(x = price, y = predicted_price)) +
-  geom_point(alpha = 0.6, color = "blue") +
-  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
-  labs(title = "Actual vs Predicted Prices", x = "Actual Price", y = "Predicted Price") +
-  theme_minimal()
-```
-
-
-```{r}
-# test_dataset <- data_cleaned %>%
-#  filter(price <= quantile(price, 0.99, na.rm = TRUE) & availability_365 > 0)
-
-test_dataset <- data_cleaned %>%
-  filter(price <= 1000 & availability_365 > 0)
-
-# Split the data (80% train, 20% test)
-set.seed(123) 
-data_split <- initial_split(test_dataset, prop = 0.8)
-train_data <- training(data_split)
-test_data <- testing(data_split)
-
-# Fit a GAM
-model_gam_train <- gam(price ~ s(latitude, longitude) + s(accommodates) + s(bathrooms) +
-                 s(bedrooms) + s(beds) + s(review_scores_rating) + s(host_listings_count) +
-                 s(availability_365) + room_type + property_type + host_is_superhost,
-                 data = train_data)
-
-
-# Summarize the model
-summary(model_gam_train)
-
-summary(test_data$price)
-
-
-```
-
 
 ## 5.5 Neural Network
 It is used to analyse  .... and answer the project question x
