@@ -330,6 +330,8 @@ BCN_Accomm <- BCN_Accomm %>%
 summary(BCN_Accomm$price)
 ```
 
+Now, a new Correlation Matrix with the filtered observations of the price variable is displayed.
+
 ```{r New correlation_matrix_numeric_fields, echo = FALSE}
 # Create a correlation matrix for numeric fields
 cor_BNC_Accomm_new <- select_if(BCN_Accomm, is.numeric) %>%
@@ -342,6 +344,10 @@ str(cor_BNC_Accomm)
 # print correlation matrix
 corrplot(cor(cor_BNC_Accomm_new), type = "upper", order = "hclust", tl.col = "black")
 ```
+
+We can observe that the price variable is now most correlated with variables related to the size and capacity of an Airbnb, such as bathrooms, bedrooms, number of beds, and accommodates.
+
+On the other hand, general availability and review scores have little impact on the price.
 
 ### 3.5 Histograms for Numerical Variables(CR)
 
@@ -631,16 +637,74 @@ From the plot above, the following insights can be derived:
 
 # 5 Machine Learning Models
 
+In this chapter, different machine learning models will be explored to predict Airbnb prices and the occupancy rate over the next 30 days.
+
+The formula to calculate the Occupancy rate in 30 days is:
+
+**Occupancy Rate**:
+$$
+
+\text{Occupancy Rate} = \left(1 - \frac{\text{Availability 30 Days}}{\text{Total Days = 30}}\right) \times 100
+
+$$
+According to the formula above, a new columns with the Occupancy rate is calculated and the head data of the new variable Occupancy_rate_30 is:
+
+```{r New column for Occupancy rate, echo = FALSE}
+# Create a new column for occupancy rate
+BCN_Accomm$occupancy_rate_30 <- (1 - BCN_Accomm$availability_30 / 30) * 100
+
+# Preview the new column
+head(BCN_Accomm$occupancy_rate_30)
+
+```
+
+With this new predictor, the Occupancy rate in the next 30 days is going to be predicted.
+
 As mentioned in the previous chapters, the categorical variables are converted into factors to proceed with the modeling phase.
 
 ```{r Covert categorical variables into factors}
+# Remove rows with the unwanted neighborhoods
+BCN_Accomm <- BCN_Accomm[!(BCN_Accomm$neighbourhood %in% c("La Vall d'Hebron", "Torre Baró")), ]
+
 # converting categorical variables into factors
 BCN_Accomm$neighbourhood <- as.factor(BCN_Accomm$neighbourhood)
 BCN_Accomm$property_type <- as.factor(BCN_Accomm$property_type)
 BCN_Accomm$room_type <- as.factor(BCN_Accomm$room_type)
 BCN_Accomm$zipcode <- as.factor(BCN_Accomm$zipcode)
 BCN_Accomm$availability_30 <- as.factor(BCN_Accomm$availability_30)
-BCN_Accomm$accommodates <- as.factor(BCN_Accomm$accommodates)
+
+# Convert variables that represent counts or continuous numbers into numeric
+# If these were read as characters or factors, ensure they're numeric:
+if (is.factor(BCN_Accomm$accommodates)) {
+  BCN_Accomm$accommodates <- as.numeric(as.character(BCN_Accomm$accommodates))
+}
+if (is.factor(BCN_Accomm$bathrooms)) {
+  BCN_Accomm$bathrooms <- as.numeric(as.character(BCN_Accomm$bathrooms))
+}
+if (!is.numeric(BCN_Accomm$bedrooms)) {
+  BCN_Accomm$bedrooms <- as.numeric(BCN_Accomm$bedrooms)
+}
+if (!is.numeric(BCN_Accomm$beds)) {
+  BCN_Accomm$beds <- as.numeric(BCN_Accomm$beds)
+}
+if (!is.numeric(BCN_Accomm$latitude)) {
+  BCN_Accomm$latitude <- as.numeric(BCN_Accomm$latitude)
+}
+if (!is.numeric(BCN_Accomm$longitude)) {
+  BCN_Accomm$longitude <- as.numeric(BCN_Accomm$longitude)
+}
+if (!is.numeric(BCN_Accomm$review_scores_rating)) {
+  BCN_Accomm$review_scores_rating <- as.numeric(BCN_Accomm$review_scores_rating)
+}
+if (!is.numeric(BCN_Accomm$minimum_nights)) {
+  BCN_Accomm$minimum_nights <- as.numeric(BCN_Accomm$minimum_nights)
+}
+
+# Ensure zipcodes are cleaned or set unknowns
+BCN_Accomm$zipcode <- ifelse(grepl("^[0-9]{4}$", BCN_Accomm$zipcode), 
+                             BCN_Accomm$zipcode, 
+                             "unknown")
+BCN_Accomm$zipcode <- as.factor(BCN_Accomm$zipcode)
 ```
 
 ## Train and Test data
@@ -669,23 +733,94 @@ train <- BCN_Accomm[group==1,]
 
 # test data set with around 40% of the samples
 test <- BCN_Accomm[group==2,]
+test <- na.omit(test)
+
+```
+
+```{r}
+# For all factor variables used in the model, ensure that the test factors have the same levels as train
+test$property_type <- factor(test$property_type, levels = levels(train$property_type))
+test$room_type <- factor(test$room_type, levels = levels(train$room_type))
+test$neighbourhood <- factor(test$neighbourhood, levels = levels(train$neighbourhood))
+
 ```
 
 
+```{r}
+# Ensure no NAs or infinite values in important numeric variables
+numeric_vars <- c("bathrooms", "bedrooms", "accommodates", "beds", 
+                  "latitude", "longitude", "review_scores_rating", "minimum_nights")
+```
+
+
+Next, based on the Correlation Matrix, showed in chapter 3.4, the variables used to address the first reasearch question about price, are:
+
+- **`bedrroms`**
+- **`bathrooms`**
+- **`accomodates`**
+- **`beds`**
+- **`latitude and longitude`**
+- **`review_score_rating`**
+- **`minimum_nights`**
+- **`property_type`**
+- **`room_type`**
+
+The variables used for the Occupancy rate in one month are:
+
+- **`latitude`** and **`longitude`** (location)
+- **`bathrooms`**
+- **`bedrooms`**
+- **`accommodates`**
+- **`beds`**
+- **`price`**
+- **`minimum_nights`**
+- **`availability_30`**
+- **`availability_60`**
+- **`availability_90`**
+- **`availability_365`**
+- **`review_scores_rating`**
+- **`property_type`**
+- **`room_type`**
+
+`
+
+## 5.1 Linear Model
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.2 Generalised Linear Model with family set to Poisson
+It is used to analyse  .... and answer the project question x
+- Accurancy
+- Precision
+- Recall
+- RMSE (Root Mean Squared Error)
+- MAE (Mean Absolute Error)
+- R Squared
+
+## 5.3 Generalised Linear Model with family set to Binomial or Multinomial data
+
+1. What are the key factors influencing accommodation prices in Barcelona?
+2. Can we predict occupancy rates based on location, amenities, or other factors?
 
 ## 5.4 Generalised Additive Model
+
 In this chapter, Generalized Additive Models (GAMs) will be applied with the Price variable as the response, to analyze its interactions with the predictor variables.
 
-The first goal is to identify key factors influencing prices in Barcelona, addressing Research Question 1.
+The first goal is to identify key factors influencing prices in Barcelona, addressing Research Question 1 (What are the key factors influencing accommodation prices in Barcelona?)
 
 First, we aim to determine whether a nonlinear relationship exists between the independent variables and price. To explore this, the variable Review Score Rating will be plotted against Price to visualize whether the relationship is linear or not.
 
-```{r Price Vs Number of Bedrooms, echo=FALSE}
+```{r Price Vs Number of Review Score rating, echo=FALSE}
 # Bedrooms vs Price
 ggplot(BCN_Accomm, aes(x = review_scores_rating, y = price)) +
   geom_point(color = "blue") +
   geom_smooth(method = "loess", color = "red") + # Loess: on-parametric method for fitting a curve to the data.
-  labs(title = "Price vs Review Score Ratings", x = "Review Score Rating", y = "Price")+
+  labs(title = "Price vs Review Score Ratings", x = "Review Score", y = "Price")+
   theme(
     legend.position = "none",
     plot.title = element_text(hjust = 0.5, face = "bold"))
@@ -695,16 +830,95 @@ From the plot above and Chapter 4.3 of this report, we observe that many points 
 
 Given that at least one variable does not exhibit a linear relationship, we will proceed with applying a Generalized Additive Model (GAM) to better capture potential nonlinear interactions.
 
-Next, the variables Room Type and Host is Super Host will be converted into factors to ensure they are treated as categorical variables in the analysis.
+### 5.4.1 Gam Model Training for Price Prediction
 
-
-The  GAM will be a  model using latitude, longitude,review score rating, number of bathrooms and bedrooms and room type as predictors. 
-
-Latitude and longitude are included in the model since the location of an Airbnb is expected to impact the rental price. Similarly, feedback from previous clients, reflected in the review score rating, is considered an important factor influencing price, as well as the number of bedrooms and bathrooms.
+The formula for the Gam Model is:
 
 $$
-\text{Price} = \beta_0 + f_1(\text{latitude}, \text{longitude}) + f_2(\text{accommodates}) + f_3(\text{bathrooms}) + f_4(\text{bedrooms}) + f_5(\text{beds}) + f_6(\text{review\_scores\_rating}) + f_7(\text{host\_listings\_count}) + f_8(\text{availability\_365}) + \beta_1(\text{room\_type}) + \beta_2(\text{property\_type}) + \beta_3(\text{host\_is\_superhost}) + \beta_4(\text{neighbourhood}) + \epsilon
+\text{Price} = \beta_0 + f_1(\text{bathrooms}) + f_2(\text{bedrooms}) + f_3(\text{accommodates}) + f_4(\text{beds}) + f_5(\text{latitude}) + f_6(\text{longitude}) + f_7(\text{review\_scores\_rating}) + f_8(\text{minimum\_nights}) + \beta_1(\text{room\_type}) + \beta_2(\text{neighbourhood}) + \epsilon
 $$
+```{r Fit Gam Model, echo = FALSE}
+# Gam Model
+gam_price <- gam(price ~ 
+                   s(bathrooms) + s(bedrooms) + s(accommodates) + s(beds) +
+                   s(latitude) + s(longitude) +
+                   s(review_scores_rating) + s(minimum_nights) +
+                   room_type + neighbourhood,
+                 data = train, method = "REML")
+
+# Summary of the occupancy model
+summary(gam_price)
+```
+
+### 5.4.2 Gam Model Prediction of pricing evaluation
+
+```{r Gam Prediction, echo = FALSE}
+# Make sure test has no problematic values before predicting
+test$predicted_price <- predict(gam_price, newdata = test)
+
+# Calculate R-squared on the test set
+r_squared <- 1 - sum((test$price - test$predicted_price)^2) / sum((test$price - mean(test$price))^2)
+cat("R-squared on Test Set: ", r_squared, "\n")
+
+# Plot observed vs predicted with points in blue
+ggplot(test, aes(x = price, y = predicted_price)) +
+  geom_point(alpha = 0.5, color = "blue") +  # Set points color to blue
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  labs(title = "Observed vs Predicted Prices (Test Set)",
+       x = "Observed Price", y = "Predicted Price") +
+  theme_minimal()
+
+```
+
+### 5.4.3 Gam Model Evaluate Predictive Performance
+
+```{r Gam Evaluation Predictive performance, echo = FALSE}
+# Calculate errors
+mae <- mean(abs(test$price - test$predicted_price))
+rmse <- sqrt(mean((test$price - test$predicted_price)^2))
+r_squared <- 1 - sum((test$price - test$predicted_price)^2) / sum((test$price - mean(test$price))^2)
+
+cat("MAE: ", mae, "\n")
+cat("RMSE: ", rmse, "\n")
+cat("R-squared: ", r_squared, "\n")
+
+```
+
+### 5.4.4 Gam Model Training for Occupancy Prediction
+
+```{r}
+# Fit the GAM model
+gam_occupancy_30 <- gam(occupancy_rate_30 ~ 
+                          s(latitude) + s(longitude) + 
+                          s(bathrooms) + s(bedrooms) + s(accommodates) + s(beds) +
+                          s(price) + s(minimum_nights) + 
+                          s(review_scores_rating) + (neighbourhood),
+                        data = train, method = "REML")
+
+# Summary of the GAM model
+summary(gam_occupancy_30)
+```
+
+
+### 5.4.5 Gam Model Prediction of occupancy Rate
+
+```{r Gam Occupancy Prediction, echo = FALSE}
+# Make predictions on the test set using gam_occupancy_30
+test$predicted_occupancy_30 <- predict(gam_occupancy_30, newdata = test)
+
+# Calculate R-squared on the test set
+r_squared_occupancy <- 1 - sum((test$occupancy_rate_30 - test$predicted_occupancy_30)^2) / 
+                          sum((test$occupancy_rate_30 - mean(test$occupancy_rate_30))^2)
+cat("R-squared on Test Set (Occupancy 30): ", r_squared_occupancy, "\n")
+
+# Plot observed vs predicted occupancy with blue points
+ggplot(test, aes(x = occupancy_rate_30, y = predicted_occupancy_30)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  labs(title = "Observed vs Predicted Occupancy (Test Set)",
+       x = "Observed Occupancy (30 days)", y = "Predicted Occupancy (30 days)") +
+  theme_minimal()
+```
 
 ## 5.5 Neural Network
 It is used to analyse  .... and answer the project question x
