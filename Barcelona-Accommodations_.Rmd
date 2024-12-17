@@ -643,10 +643,9 @@ The formula to calculate the Occupancy rate in 30 days is:
 
 **Occupancy Rate**:
 $$
-
 \text{Occupancy Rate} = \left(1 - \frac{\text{Availability 30 Days}}{\text{Total Days = 30}}\right) \times 100
-
 $$
+
 According to the formula above, a new columns with the Occupancy rate is calculated and the head data of the new variable Occupancy_rate_30 is:
 
 ```{r New column for Occupancy rate, echo = FALSE}
@@ -662,7 +661,7 @@ With this new predictor, the Occupancy rate in the next 30 days is going to be p
 
 As mentioned in the previous chapters, the categorical variables are converted into factors to proceed with the modeling phase.
 
-```{r Covert categorical variables into factors}
+```{r Covert categorical variables into factors, echo = FALSE}
 # Remove rows with the unwanted neighborhoods
 BCN_Accomm <- BCN_Accomm[!(BCN_Accomm$neighbourhood %in% c("La Vall d'Hebron", "Torre Baró")), ]
 
@@ -721,7 +720,7 @@ Before analysing the different models, we need to divide the data into a trainin
 The first set will be used to find the relationship between dependent and independent variable, while the second set will be used to analyse the performance of the models. 
 We decide to use 60% of the data set as a training set, and the rest as a test set.
 
-```{r Train and Test split}
+```{r Train and Test split, echo =FALSE}
 set.seed(1000)
 # Define the number of groups and the amount of sample for each
 group <- sample(2, nrow(BCN_Accomm),
@@ -737,7 +736,7 @@ test <- na.omit(test)
 
 ```
 
-```{r}
+```{r, echo =FALSE}
 # For all factor variables used in the model, ensure that the test factors have the same levels as train
 test$property_type <- factor(test$property_type, levels = levels(train$property_type))
 test$room_type <- factor(test$room_type, levels = levels(train$room_type))
@@ -746,7 +745,7 @@ test$neighbourhood <- factor(test$neighbourhood, levels = levels(train$neighbour
 ```
 
 
-```{r}
+```{r, echo =FALSE}
 # Ensure no NAs or infinite values in important numeric variables
 numeric_vars <- c("bathrooms", "bedrooms", "accommodates", "beds", 
                   "latitude", "longitude", "review_scores_rating", "minimum_nights")
@@ -886,7 +885,7 @@ cat("R-squared: ", r_squared, "\n")
 
 ### 5.4.4 Gam Model Training for Occupancy Prediction
 
-```{r}
+```{r, echo = FALSE}
 # Fit the GAM model
 gam_occupancy_30 <- gam(occupancy_rate_30 ~ 
                           s(latitude) + s(longitude) + 
