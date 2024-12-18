@@ -752,6 +752,8 @@ numeric_vars <- c("bathrooms", "bedrooms", "accommodates", "beds",
 ```
 
 
+**Variables for Pricing Model**
+
 Next, based on the Correlation Matrix, showed in chapter 3.4, the variables used to address the first reasearch question about price, are:
 
 - **`bedrroms`**
@@ -763,6 +765,9 @@ Next, based on the Correlation Matrix, showed in chapter 3.4, the variables used
 - **`minimum_nights`**
 - **`property_type`**
 - **`room_type`**
+- **`neighbourhood`**
+
+**Variables for occupancy Rate Model**
 
 The variables used for the Occupancy rate in one month are:
 
@@ -773,15 +778,9 @@ The variables used for the Occupancy rate in one month are:
 - **`beds`**
 - **`price`**
 - **`minimum_nights`**
-- **`availability_30`**
-- **`availability_60`**
-- **`availability_90`**
-- **`availability_365`**
-- **`review_scores_rating`**
-- **`property_type`**
-- **`room_type`**
+- **`review_score_rating`**
+- **`neighbourhood`**
 
-`
 
 ## 5.1 Linear Model
 It is used to analyse  .... and answer the project question x
