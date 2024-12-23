@@ -1020,6 +1020,27 @@ cat("R-squared: ", r_squared_nn, "\n")
 ```
 
 ### 5.5.4 Neural Network Model Training for Occupancy Rate Prediction
+```{r nn occupancy rate, include=FALSE, warning=FALSE, message=FALSE, dev='png'}
+# Normalize data
+normalize <- function(x) {
+  (x - min(x)) / (max(x) - min(x))
+}
+
+# Apply normalization to training data
+train_normalized <- as.data.frame(lapply(train[, c("bathrooms", "bedrooms", "accommodates", 
+                                                   "beds", "latitude", "longitude", 
+                                                   "review_scores_rating", "minimum_nights", "occupancy_rate_30")], normalize))
+
+# Formula
+formula_nn_occupancy <- occupancy_rate_30 ~ bathrooms + bedrooms + accommodates + beds + 
+                                            latitude + longitude + review_scores_rating + minimum_nights
+
+# Train the Neural Network
+nn_occupancy <- neuralnet(formula_nn_occupancy, 
+                          data = train_normalized, 
+                          hidden = c(3),  
+                          linear.output = TRUE)
+```
 
 ## 5.6 Support Vector Machine
 It is used to analyse  .... and answer the project question x
