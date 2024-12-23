@@ -7,16 +7,16 @@ output:
     toc: true          # Enables the table of contents
     toc_depth: 3       # Control the depth of headers to include in the TOC
     toc_float: true    # Makes the TOC float on the page
+    self_contained: true  # Embeds all dependencies into the HTML file
   pdf_document:
-    toc: true          # Enables the table of contents for PDF output
-    toc_depth: 2       # Controls the depth of headers to include in the TOC
+    toc: true
+    toc_depth: 2
   word_document:
-    toc: true          # Enables the table of contents for Word output
-    toc_depth: 2       # Controls the depth of headers to include in the TOC
+    toc: true
+    toc_depth: 2
 editor_options: 
   chunk_output_type: html
 always_allow_html: true
-runtime: shiny
 ---
 
 ```{r download packages, include = FALSE}
@@ -35,7 +35,7 @@ knitr::include_graphics("Barcelona Picture.png")
 
 ```{r Packages, include=FALSE}
 # Instal requiered packages
-install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud", "mgcv", "gratia", "rsample", "Metrics", "forcats", "VGAM", "e1071"))
+install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud", "mgcv", "gratia", "rsample", "Metrics", "forcats", "VGAM", "e1071", "NeuralNetTools"))
 ```
 
 ```{r libraries, include=FALSE}
@@ -61,6 +61,7 @@ library(wordcloud)    # Wordcloud plot
 library(rsample)      # Split dataset into training and testing
 library(mgcv)         # Gam Mdels
 library(neuralnet)    # Neural Netwotk
+library(NeuralNetTools) # Plot Neural network
 ```
 
 # 1. Introduction
@@ -533,44 +534,24 @@ This section was designed to allow the employees of the Tourism Company and othe
 The purpose of the following interactive plot is to allow users to select a neighborhood of interest and visualize, on a map, the different accommodations available along with their price per night when one of the circles is clicked.
 
 ```{r  Airbnb locations, echo = FALSE}
-# Sample Shiny app for leaflet map with neighborhood filter
-ui <- fluidPage(
-  titlePanel("Airbnb Prices by Neighbourhood"),
-  sidebarLayout(
-    sidebarPanel(
-      # Drop down to select neighborhood
-      selectInput("neighbourhood", "Select Neighbourhood:", choices = sort(unique(BCN_Accomm$neighbourhood)))
-    ),
-    mainPanel(
-      leafletOutput("map") # main content area where the map will be displayed
-    )
+# Replace "BCN_Accomm" with your actual data frame
+filtered_data <- BCN_Accomm
+
+# Create an interactive map
+leaflet(data = filtered_data) %>%
+  addTiles() %>%  # Add OpenStreetMap tiles
+  setView(lng = 2.154007, lat = 41.390205, zoom = 12) %>%  # Center the map in Barcelona
+  addCircleMarkers(
+    lng = ~longitude,  
+    lat = ~latitude,   
+    color = "blue",    
+    radius = 5,        
+    popup = ~paste(
+      "<b>Price:</b> €", price, "<br>",
+      "<b>Room Type:</b>", room_type, "<br>",
+      "<b>Neighbourhood:</b>", neighbourhood
+    )  # Popup content
   )
-)
-
-server <- function(input, output, session) {
-  # Dropdown to select neighbourhood, sorted alphabetically
-  filtered_data <- reactive({
-    BCN_Accomm[BCN_Accomm$neighbourhood == input$neighbourhood, ]
-  })
-
-  # Render leaflet map
-  output$map <- renderLeaflet({
-    leaflet(filtered_data()) %>%
-      addTiles() %>%
-      setView(lng = 2.154007, lat = 41.390205, zoom = 12) %>% #Location of Barcelona
-      addCircleMarkers(
-        lng = ~longitude,
-        lat = ~latitude,
-        color = "blue",
-        popup = ~paste("<b>Price:</b> €", price, "<br>",
-          "<b>Type:</b>", room_type, "<br>",
-          "<b>Neighbourhood:</b>", neighbourhood)
-      )
-  })
-}
-
-# Run the Shiny app
-shinyApp(ui, server)
 ```
 
 ### 4.2 Heatmap of prices
@@ -967,6 +948,7 @@ plot(nn_price)
 
 # Summary 
 summary(nn_price)
+plotnet(nn_price)
 ```
 
 ### 5.5.2 Neural Network Model Prediction and Pricing Evaluation
