@@ -64,6 +64,8 @@ library(neuralnet)    # Neural Netwotk
 library(NeuralNetTools) # Plot Neural network
 library(caret)        # confusion matrix
 library(car)
+library(neuralnet)
+library(NeuralNetTools)  # For plotnet
 ```
 
 # 1. Introduction
