@@ -2508,14 +2508,13 @@ summary(nn_price)
 
 ### 5.9.2 Neural Network Model Prediction and Pricing Evaluation
 
-```{r NN_prediction, echo = TRUE, warning = FALSE, message = FALSE, dev='png'}
-# Ensure relevant columns are numeric
-test_normalized <- test_normalized %>%
-  mutate(across(c("bathrooms", "bedrooms", "accommodates", "beds", 
-                  "latitude", "longitude", "review_scores_rating", 
-                  "minimum_nights"), as.numeric))
+```{r NN prediction, echo=FALSE, message=FALSE, warning=FALSE, dev='png'}
+# Normalize the test data
+test_normalized <- as.data.frame(lapply(test[, c("bathrooms", "bedrooms", "accommodates", 
+                                                 "beds", "latitude", "longitude", 
+                                                 "review_scores_rating", "minimum_nights", "price")], normalize))
 
-# Prediction using the neural network model
+# Prediction
 nn_predictions <- compute(nn_price, 
                           test_normalized[, c("bathrooms", "bedrooms", "accommodates", 
                                               "beds", "latitude", "longitude", 
@@ -2529,19 +2528,7 @@ test$predicted_price <- denormalize(nn_predictions$net.result,
                                     min(train$price), 
                                     max(train$price))
 
-# Create the Observed vs Predicted plot
-nn_plot <- ggplot(test, aes(x = price, y = predicted_price)) +
-  geom_point(alpha = 0.5, color = "blue") + 
-  geom_abline(slope = 1, intercept = 0, color = "red") +
-  labs(title = "Neural Network Model: Observed vs Predicted Prices",
-       x = "Observed Price", y = "Predicted Price") +
-  theme_minimal()
 
-# Save the plot as a PNG file
-ggsave("nn_price_plot.png", plot = nn_plot, width = 8, height = 6)
-
-# Include the saved plot in the knitted document
-knitr::include_graphics("nn_price_plot.png")
 ```
 
 Similar to the GAM model, the plot above shows that the points spread more significantly at higher price ranges, indicating that the neural network model is more accurate when predicting lower prices. This suggests that the model struggles to capture the variability in higher-priced listings, potentially due to outliers. 
