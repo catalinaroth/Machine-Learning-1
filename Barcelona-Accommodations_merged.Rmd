@@ -36,7 +36,7 @@ knitr::include_graphics("Barcelona Picture.png")
 
 ```{r Packages, include=FALSE}
 # Instal requiered packages
-install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud", "mgcv", "gratia", "rsample", "Metrics", "forcats", "VGAM", "e1071", "NeuralNetTools", "car"))
+#install.packages(c("dplyr", "ggplot2", "tidyr", "RColorBrewer", "leaflet", "shiny", "leaflet.extras", "corrplot", "treemap", "wordcloud", "mgcv", "gratia", "rsample", "Metrics", "forcats", "VGAM", "e1071", "NeuralNetTools", "car"))
 ```
 
 ```{r libraries, include=FALSE}
@@ -173,7 +173,7 @@ The different models to be developed are:
 
 First, the pricing variable will be converted into a numeric format, and in the fifth chapter of this report (Machine Learning Models), the categorical variables will be transformed into factors for further analysis and modeling.
 
-```{r Convert price to numeric}
+```{r Convert price to numeric, include=FALSE}
 BCN_Accomm_sub$price <- gsub(",", "", BCN_Accomm_sub$price) # removed ','
 BCN_Accomm_sub$price <- gsub("\\$", "", BCN_Accomm_sub$price) # removed '$' sign
 BCN_Accomm_sub$price <- as.numeric(BCN_Accomm_sub$price)  # converted to number format
@@ -190,13 +190,13 @@ miss_values <- sapply(BCN_Accomm_sub, function(x) which(is.na(x)))
 print(miss_values)
 ```
 
-```{r Count missing values per columns, include=FALSE}
+```{r Count missing values per columns, echo=FALSE}
 # count the missing values column wise
 miss_values_col <- sapply(BCN_Accomm_sub, function(x) sum(is.na(x)))
 print(miss_values_col)
 ```
 
-```{r patt-miss-values, include = FALSE}
+```{r patt-miss-values, echo = FALSE}
 md.pattern(BCN_Accomm_sub, rotate.names = TRUE)
 ```
 
@@ -244,7 +244,7 @@ md.pattern(BCN_Accomm, rotate.names = TRUE)
 
 ## 3.3 Correlation matrix
 
-```{r correlation_matrix_numeric_fields}
+```{r correlation_matrix_numeric_fields, echo = FALSE}
 # Create a correlation matrix for numeric fields
 cor_BNC_Accomm <- select_if(BCN_Accomm, is.numeric) %>%
   select(-c(id, X, host_id))
@@ -843,7 +843,7 @@ test <- na.omit(test) # removing rows with NAs values might reduce the size of t
 
 Moreover, we assure that all factor variables have the same levels in the train and test sets, including a final check to assure that no NAs values are present as concerns numerical variables.
 
-```{r, echo =FALSE}
+```{r, include = FALSE}
 str(BCN_Accomm)
 # For all factor variables used in the model, ensure that the test factors have the same levels as train
 identical(levels(test$occupancy_rate_30), levels(train$occupancy_rate_30))
@@ -854,7 +854,7 @@ identical(levels(test$zipcode), levels(train$zipcode))
 identical(levels(test$availability_30), levels(train$availability_30))
 ```
 
-```{r, echo =FALSE}
+```{r, include =FALSE}
 # Ensure no NAs or infinite values in important numeric variables
 numeric_vars <- c("bathrooms", "bedrooms", "accommodates", "beds", 
                   "latitude", "longitude", "review_scores_rating", "minimum_nights", "price", "occupancy_rate_30")
@@ -864,7 +864,7 @@ sapply(numeric_vars, function(var) anyNA(test[[var]]))
 
 At this point, we prepare also the train and test sets in a normalized version that will be used in some of the models, naming them respectively train_normalized and test_normalized.
 
-```{r normalized-numeric}
+```{r normalized-numeric, include = FALSE}
 # Numeric variables to normalize
 numeric_columns <- c("bathrooms", "bedrooms", "accommodates", "beds",
                      "latitude", "longitude", "review_scores_rating", "minimum_nights", "price")
@@ -886,9 +886,9 @@ str(train_normalized)
 str(test_normalized)
 ```
 
-As regards the categorical variable neighborhood, for some of the models, it needs to be encoded into numerical values. We apply a one-hot encoding (each unique neighborhood will become a separate binary feature).
+As regards the categorical variable neighborhood, for some of the models, it needs to be encoded into numerical values. We apply a one-hot encoding so that each unique neighborhood will become a separate binary feature.
 
-```{r hot-encoding}
+```{r hot-encoding, include = FALSE}
 # One-hot encode 'neighbourhood' in train data for SVM (without including the reference level)
 train_neigh_dummies <- model.matrix(~neighbourhood - 1, data=train_normalized)
 
@@ -2128,7 +2128,7 @@ In this case we divide those into five ordered categories:
 - 'high' >> between 300 and 500 euros,
 - 'very high' >> between 500 and 1000 euros.
 
-```{r price_ranges}
+```{r price_ranges, echo = FALSE}
 train_normalized_encod$price_cat <- cut(train_normalized$price, 
                        breaks = c(0, 0.05, 0.15, 0.30, 0.5, 1), 
                        labels = c("very low", "low", "medium", "high", "very high"))
@@ -2140,8 +2140,7 @@ test_normalized_encod$price_cat <- cut(test_normalized$price,
 table(test_normalized_encod$price_cat) # check the distribution
 ```
 
-
-```{r price-distribution}
+```{r price-distribution, echo = FALSE}
 # check if categories are right skewed - if yes, apply log transformation before fitting the model
 hist(train_normalized_encod$price,
      main = "Histogram",
@@ -2151,10 +2150,9 @@ hist(train_normalized_encod$price,
      breaks = 30)
 ```
 
-Now we want to fit a model to test what is the probability that a property belongs to a specific price category according to the other variables. 
-Since the dependent variable is ordinal (with an inherent order) we use family 'cumulative' with link 'logit'. 
+To test what is the probability that a property belongs to a specific price category according to the predictors the generalised linear model is fitted. Since the response variable is ordinal (with an inherent order) the family 'cumulative' with link 'logit' is used. 
 
-```{r glm-price}
+```{r glm-price, echo = FALSE}
 # multinomial logistic regression model for ordered categories
 vglm_model <- vglm(price_cat ~ bathrooms + bedrooms + accommodates + beds + 
                      latitude + longitude + review_scores_rating + minimum_nights + room_type + neighbourhood, 
@@ -2163,9 +2161,13 @@ vglm_model <- vglm(price_cat ~ bathrooms + bedrooms + accommodates + beds +
 summary(vglm_model)
 ```
 
-We want to get the predicted probabilities for each price category and evaluate how many predictions are correct or incorrect in comparison with the test set.
+The four intercepts in the summary are thresholds (cut-points) for the cumulative probabilities of categories. The coefficients represent the change in the log-odds of being in or below a given category compared to higher categories, for a one-unit increase in the predictor, assuming other predictors remain constant. A negative coefficient indicates the increase of the specific predictor decreases the likelihood of being in a lower price category.
+For example, the coefficient of bathroom equal to -2.35 indicates. Accommodates (the number of admitted guests) shows a highly significant role with a coefficient around -5.67 that means: More accommodates drastically decrease the likelihood of being in a lower price category. This aligns with the fact that a bigger property can become more expensive. Another key factor is the number of minimum nights: a higher number of minimum nights increase the likelihood of being in lower price categories. This would reflect the policy of hosts to set lower prices for longer stays. The neighborhood does not seem to affect the response variable, even if a better model might give another result, as it is known that according to locations prices generally vary.
+In general, predictors like bathrooms, accommodates, latitude, and minimum_nights are strong determinants for the price category.
 
-```{r glm-price-predictions-test}
+It is now possible to calculate the predicted probabilities for each price category and evaluate how many predictions are correct or incorrect in comparison with the test set.
+
+```{r glm-price-predictions-test, echo = FALSE}
 # to get the predicted probabilities for each category
 # it gives a matrix n*(K-1) where n is number of rows in test and K number of categories in the ordinal variable
 predicted_probs <- predict(vglm_model, newdata = test_normalized_encod, type = "response")
@@ -2187,7 +2189,7 @@ To evaluate the performance of the model we make the following considerations on
 Instead, we consider the precision and recall.
 - Precision and recall: Measures for each class how often the model correctly identifies a class (precision) or how often the model identifies all true instances of a class (recall).
 
-```{r glm-price-performance-metrics}
+```{r glm-price-performance-metrics, echo = FALSE}
 # Precision and recall
 # Initialize vectors to store precision and recall for each class
 precision <- numeric(length = ncol(confusion_matrix))
@@ -2223,10 +2225,10 @@ The average of precision and recall metrics, considering the three categories of
 
 ### 5.7.2 Multinomial GLM for occupancy rate prediction
 
-The model want to see how we can we predict occupancy rates based on location, amenities, or other factors. To fit the multinomial model it is required to convert the occupancy rate in different ranges.
-Considering the non-linear distribution of the data points we prefer a data-driven approach using quantile-based bins to divide the data into categories that have approximately the same number of observations. Since the values for occupancy rate run between 0 and 100 we divide them in the categories 'low', 'medium' and 'high'.
+The following model want to evaluate the prediction of the occupancy rates in 30 days based on location, price, and the other factors above listed. To fit the multinomial model it is required to convert the occupancy rate in different ranges.
+Considering the non-linear distribution of the data points we prefer a data-driven approach using quantile-based bins to divide the data into categories that have approximately the same number of observations. Since the values for occupancy rate run between 0 and 100 we divide them in 'low', 'medium' and 'high' categories.
 
-```{r occupancy_categories}
+```{r occupancy_categories, echo = FALSE}
 train_normalized_encod_glm <- train_normalized_encod
 test_normalized_encod_glm <- test_normalized_encod
 
@@ -2249,22 +2251,24 @@ test_normalized_encod_glm$occupancy_rate_30 <- cut(test_normalized_encod_glm$occ
 table(test_normalized_encod_glm$occupancy_rate_30) # check the distribution
 ```
 
-Now we want to fit a model to test what is the probability that a property has a specific occupancy rate in the next 30 days according to the other variables. 
-Since the dependent variable is ordinal (with an inherent order) we use family 'cumulative' with link 'logit'. 
+To test what is the probability that a property has a specific occupancy rate in the next 30 days depending on the other variables, as the response variable is ordinal (with an inherent order), also in this case the family 'cumulative' with link 'logit' is used. 
 
-```{r vglm_occupancy}
+```{r vglm_occupancy, echo = FALSE}
 vglm_occupancy <- vglm(occupancy_rate_30 ~ bathrooms + bedrooms + accommodates + beds + latitude + longitude + review_scores_rating + minimum_nights + price + neighbourhood,
                    family = cumulative(link = "logit", parallel = TRUE), 
                    data = train_normalized_encod_glm)
 summary(vglm_occupancy)
 ```
 
-The summary of the model provides two intercepts that should be interpreted respectively as the threshold (logit) between low and medium/high and low/medium and high. As we used 'logit' as link for the model, we consider the exponentied coefficients that represent the odds ratio for a one-unit increase in the predictor, assuming all other variables held constant. For example, adding one bed increases the odds of a higher occupancy rate by a factor of 2.7, while adding a bedroom increases the odds of a higher occupancy rate by a factor of 0.26. According to this difference, one could claim that groups of visitor prefer smaller properties with shared spaces instead of bigger accommodations.
-For every unit increase in price (any additional euro), the odds of being in a higher occupancy category increase by a factor of 1. Considering the unit of 1 euro represents a small increase in real price, we can conclude that the price has a modest impact on the likelihood of higher occupancy rate category.
+The summary of the model provides two intercepts that should be interpreted respectively as the threshold (logit) between low and medium/high and low/medium and high. Coefficients with negative sign indicate that as their values increase, the odds of being in a higher category of occupancy rate (medium or high) decrease. This result might align with the fact that the bigger the house, the less probability to be booked in the next 30 days.
+According to the results, the more the bedrooms, accommodates, and minimum number of nights the less probability the property has to be in a higher class of occupancy rate, possibly due to pricing, target market or other factors.
+The positive coefficients for bathrooms and beds indicate that properties with more of those rooms are more likely to have a higher occupancy rate. These room types might increase the property's convenience and attractiveness for larger groups leading to a higher demand and occupancy rate. 
+So far, comparing for example the negative coefficient of bedrooms and the positive coefficient of beds, one could claim that groups of visitor prefer smaller properties with shared spaces instead of bigger accommodations.
+The small positive coefficient for price needs to be considered as: for every unit increase in price (any additional euro), the odds of being in a higher occupancy category increase by around 0.3%. Considering the result is almost 0 and the unit of 1 euro represents a small increase in real price, we can conclude that the price has a modest impact on the likelihood of higher occupancy rate category.
 
 We want to get the predicted probabilities for each occupancy rate category and evaluate how many predictions from the model are correct or incorrect in comparison with the test set.
 
-```{r glm-occupancy-predictions-test}
+```{r glm-occupancy-predictions-test, echo = FALSE}
 # to get the predicted probabilities for each category
 predicted_probs <- predict(vglm_occupancy, newdata = test_normalized_encod_glm, type = "response")
 # Get the predicted categories by selecting the class with the highest probability
@@ -2276,7 +2280,7 @@ table(predicted_categories)
 
 The confusion matrix shows that the model is not predicting probabilities of occupancy rate range for the class 'medium'. 
 
-```{r glm-occupancy-inspect}
+```{r glm-occupancy-inspect, echo = FALSE}
 head(predicted_probs)
 predicted_probabilities_class2 <- predicted_probs[, 2]
 summary(predicted_probabilities_class2)
@@ -2284,7 +2288,7 @@ summary(predicted_probabilities_class2)
 
 Inspecting the predicted probabilities, it appears that the values for the intermediate category are consistently near 0 for the observations. This might indicate that the model is ignoring this class and giving results only for the others.
 
-```{r glm-occupancy-performance-metrics-1}
+```{r glm-occupancy-performance-metrics-1, echo = FALSE}
 # Ensure the levels are the same
 # Check the levels of the true labels and predicted categories
 predicted_categories <- factor(predicted_categories, levels = c("low", "medium", "high"))
@@ -2293,10 +2297,10 @@ conf_matrix <- confusionMatrix(predicted_categories, actual_categories)
 print(conf_matrix)
 ```
 
-The accuracy of the model is around 40%. It means that there is around 40% chance to get a correct prediction that cannot be a satisfactory result.
+The accuracy of the model is around 40%. It means that there is around 40% chance to get a correct prediction that is not a satisfactory result.
 To evaluate the performance of the model, we consider the precision and recall.
 
-```{r glm-occupancy-performance-metrics-2}
+```{r glm-occupancy-performance-metrics-2, echo = FALSE}
 # Precision and recall
 table_conf_matrix <- conf_matrix$table
 # Initialize vectors to store precision and recall for each class
@@ -2508,13 +2512,14 @@ summary(nn_price)
 
 ### 5.9.2 Neural Network Model Prediction and Pricing Evaluation
 
-```{r NN prediction, echo=FALSE, message=FALSE, warning=FALSE, dev='png'}
-# Normalize the test data
-test_normalized <- as.data.frame(lapply(test[, c("bathrooms", "bedrooms", "accommodates", 
-                                                 "beds", "latitude", "longitude", 
-                                                 "review_scores_rating", "minimum_nights", "price")], normalize))
+```{r NN_prediction, echo = TRUE, warning = FALSE, message = FALSE, dev='png'}
+# Ensure relevant columns are numeric
+test_normalized <- test_normalized %>%
+  mutate(across(c("bathrooms", "bedrooms", "accommodates", "beds", 
+                  "latitude", "longitude", "review_scores_rating", 
+                  "minimum_nights"), as.numeric))
 
-# Prediction
+# Prediction using the neural network model
 nn_predictions <- compute(nn_price, 
                           test_normalized[, c("bathrooms", "bedrooms", "accommodates", 
                                               "beds", "latitude", "longitude", 
@@ -2528,7 +2533,19 @@ test$predicted_price <- denormalize(nn_predictions$net.result,
                                     min(train$price), 
                                     max(train$price))
 
+# Create the Observed vs Predicted plot
+nn_plot <- ggplot(test, aes(x = price, y = predicted_price)) +
+  geom_point(alpha = 0.5, color = "blue") + 
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  labs(title = "Neural Network Model: Observed vs Predicted Prices",
+       x = "Observed Price", y = "Predicted Price") +
+  theme_minimal()
 
+# Save the plot as a PNG file
+ggsave("nn_price_plot.png", plot = nn_plot, width = 8, height = 6)
+
+# Include the saved plot in the knitted document
+knitr::include_graphics("nn_price_plot.png")
 ```
 
 Similar to the GAM model, the plot above shows that the points spread more significantly at higher price ranges, indicating that the neural network model is more accurate when predicting lower prices. This suggests that the model struggles to capture the variability in higher-priced listings, potentially due to outliers. 
@@ -2550,14 +2567,11 @@ The R-squared value is 0.285, meaning that the model explains only the 28.5% of 
 
 ## 5.10 Support Vector Machine
 
-### 5.10.1 SVM for Price prediction
+### 5.10.1 SVR for Price prediction
 
-The SVM model for Price prediction is a regression model (SVR) since the target variable is numeric.
-We consider the normalized numerical variables since the SVM model is sensitive to the scale of the features.
-For the SVR model we choose a radial kernel to better treat variables non-linear dependent.
-Tuning the cost parameter in SVM is crucial to finding the optimal balance between over-fitting and under-fitting. The cost parameter (C) controls the trade-off between having a wide margin and correctly classifying the training set.
+The SVR model for Price prediction is a regression model (SVR) since the target variable is numeric. We consider the normalized numerical variables since the model is sensitive to the scale of the features. Moreover, as the response variable presents a skewed distribution we apply a log transformation to optimize it.
 
-```{r SVM-price}
+```{r}
 # check if price are right skewed - if yes, apply log transformation before fitting the model
 hist(train_normalized_encod$price, 
      main = "Histogram of Price", 
@@ -2577,30 +2591,30 @@ hist(train_normalized_encod$log_price,
      col = "lightblue", 
      border = "black", 
      breaks = 30)
+```
 
+For the SVR model we choose a radial kernel to better treat variables non-linear dependent. Tuning the cost parameter for Support Vectors model is crucial to finding the optimal balance between over-fitting and under-fitting. The cost parameter (C) controls the trade-off between having a wide margin and correctly classifying the training set. (Disclaimer: the tuning takes very long to be run and it remains commented in the code file for convenience.)
+
+```{r SVM-price, echo = FALSE}
 # Formula for SVM model
 formula_svm <- log_price ~ bathrooms + bedrooms + accommodates + beds + latitude + longitude + review_scores_rating + minimum_nights + neighbourhood
 
 # Tuning
 set.seed(123)
-cv_model <- tune.svm(formula_svm, data=train_normalized_encod, kernel = 'radial', cost=c(0.01, 0.1, 1, 10), gamma=c(0.01, 0.1, 1))
-cv_model
+# cv_model <- tune.svm(formula_svm, data=train_normalized_encod, kernel = 'radial', cost=c(10000, 100000), gamma=c(0.01, 0.05))
+# cv_model
 ```
 
-We apply the values of cost and gamma according to the result obtained by tuning the hyper-parameters. 
-
-```{r SVM-price-model}
+```{r SVM-price-model, echo = FALSE}
 # Train the SVM model
-SVM_model <- svm(formula_svm, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 10, gamma = 0.1)
+#SVM_model <- svm(formula_svm, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 10, gamma = 0.1)
+SVM_model <- svm(formula_svm, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 100000, gamma = 0.05)
 summary(SVM_model)
 ```
 
-Since we use SVM for a regression model, we can evaluate it considering the following metrics:
-- Mean Absolute Error (MAE),
-- Mean Squared Error (MSE),
-- Root Mean Squared Error (RMSE).
+The SVR model can be evaluated considering the Mean Absolute Error (MAE), Mean Squared Error (MSE), and Root Mean Squared Error (RMSE).
 
-```{r SVM-price-metrics}
+```{r SVM-price-metrics, echo = FALSE}
 # Prediction on test data
 predictions <- predict(SVM_model, newdata = test_normalized_encod)
 # Convert log-transformed predictions back to original price scale
@@ -2624,16 +2638,15 @@ cat("RMSE:", rmse_svm, "\n")
 cat("R-squared:", r_squared_svm, "\n")
 ```
 
-A Mean Absolute Error (MAE) around 0.07 suggests that, on average, the model's predictions are off by about 0.07 units from the actual price, that suggest a good performance. However, in general, a RMSE larger than MAE can indicate outliers or extreme errors that influence the result.
-Eventually, the R-squared value indicates that the model can explain just around 11% of the variance of the price, that is a poor result. 
+A Mean Absolute Error (MAE) around 0.05 suggests that, on average, the model's predictions are off by about 0.05 units from the actual price, that suggest a good performance. However, in general, a RMSE larger than MAE can indicate outliers or extreme errors that influence the result.
+Eventually, the R-squared value indicates that the model can explain just around 26% of the variance of the price, indicating a not good performance of the model. 
 
-### 5.10.2 SVM for Occupancy rate prediction
+### 5.10.2 SVR for Occupancy rate prediction
 
-We perform a SVM regression model for Occupancy Rate.
-Similar to the SVR price model, we consider the normalized numerical variables and encode categorical variables into numerical values. Also in this case, we choose a radial kernel since the predictors have mainly non-linear relationships with the response variable.
-We then operate the tuning for the cost and gamma hyper-parameters.
+We perform a the Support Vectors regression model for the Occupancy Rate.
+Similar to the SVR price model, we consider the normalized numerical variables and encode categorical variables into numerical values. Also in this case, we choose a radial kernel since the predictors have mainly non-linear relationships with the response variable. (Disclaimer: the tuning takes very long to be run and it remains commented in the code file for convenience.)
 
-```{r SVM-occupancy}
+```{r SVM-occupancy, echo = FALSE}
 # check if occupancy rate are right skewed - if yes, apply log transformation before fitting the model
 hist(train_normalized_encod$occupancy_rate_30, 
      main = "Histogram of Occupancy rate", 
@@ -2647,23 +2660,21 @@ formula_svr_occupancy <- occupancy_rate_30 ~ bathrooms + bedrooms + accommodates
 
 # Tuning
 set.seed(123)
-cv_model <- tune.svm(formula_svr_occupancy, data=train_normalized_encod, kernel = 'radial', cost=c(0.1, 1, 10, 100), gamma=c(0.01, 0.1, 1, 10))
-cv_model$best.model
+# cv_model <- tune.svm(formula_svr_occupancy, data=train_normalized_encod, kernel = 'radial', cost=c(1000, 10000, 1000000), gamma=c(0.01, 0.1, 1))
+# cv_model$best.model
 ```
 
-We apply the values of cost and gamma according to the result obtained by tuning the hyper-parameters. 
-
-```{r SVM-occupancy-model}
+```{r SVM-occupancy-model, echo = FALSE}
 # Train the SVM model
-SVM_occupancy <- svm(formula_svr_occupancy, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 1, gamma = 10, type='eps-regression')
+SVM_occupancy <- svm(formula_svr_occupancy, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 1000000, gamma = 0.1, type='eps-regression')
 ```
 
-Since we use SVM for a regression model, we can evaluate it considering the following metrics:
+Also in this case, the model can be evaluated considering the following metrics:
 - Mean Absolute Error (MAE),
 - Mean Squared Error (MSE),
 - Root Mean Squared Error (RMSE).
 
-```{r SVM-occupancy-metrics}
+```{r SVM-occupancy-metrics, echo = FALSE}
 # Prediction on test data
 predictions <- predict(SVM_occupancy, newdata = test_normalized_encod)
 
@@ -2675,7 +2686,7 @@ mae_svm <- mean(abs(predictions - test_normalized_encod$occupancy_rate_30))
 rmse_svm <- sqrt(mean((predictions - test_normalized_encod$occupancy_rate_30)^2))
 
 # R-squared
-ss_total <- sum((test_normalized_encod$occupancy_rate_30 - mean(test_normalized_encod$occupancy_rate_30))^2)
+ss_total <- sum((test_normalized_encod$occupancy_rate_30 - mean(test_normalized$occupancy_rate_30))^2)
 ss_residual <- sum((test_normalized_encod$occupancy_rate_30 - predictions)^2)
 r_squared_svm <- 1 - (ss_residual / ss_total)
 
@@ -2685,11 +2696,12 @@ cat("RMSE:", rmse_svm, "\n")
 cat("R-squared:", r_squared_svm, "\n")
 ```
 
-A Mean Absolute Error (MAE) around 28 suggests that, on average, the model's predictions are off by about 28 units from the actual occupancy rate. Also in this case, a RMSE larger than MAE can indicate outliers or extreme errors that influence the result.
-Eventually, the R-squared value indicates that the model can explain just around 11% of the variance of the price, that is a poor result. This means the model is performing worse than a simple baseline model that predicts the mean of the target variable for all observations. 
-The model is struggling to generalize or capture the variance in the data.
+A Mean Absolute Error (MAE) around 22 suggests that, on average, the model's predictions are off by about 22 units from the actual occupancy rate. Also in this case, a RMSE larger than MAE can indicate outliers or extreme errors that influence the result.
+However, the R-squared value indicates that the model is performing worse than a simple baseline model that predicts the mean of the target variable for all observations. It cannot generalize or capture the variance in the data.
 
-```{r svm-occupancy-check}
+Inspecting th distribution of the data, it appears that the predictions are concentrated around the higher (the 1st quartile is 83.30 that is very close to the maximum value of 95.65).
+
+```{r svm-occupancy-check, echo = FALSE}
 summary(predictions)
 
 plot(test_normalized_encod$occupancy_rate_30, predictions,
@@ -2698,28 +2710,28 @@ plot(test_normalized_encod$occupancy_rate_30, predictions,
      main = "VSM-Occupancy: Predictions vs Actuals")
 ```
 
-Inspecting th distribution of the data, it appears that the predictions are concentrated around the higher (the 1st quartile is 83.30 that is very close to the maximum value of 95.65). 
-
-```{r}
+```{r residual-SVR-occupancy, echo = FALSE}
 residuals <- test_normalized_encod$occupancy_rate_30 - predictions
 plot(residuals, main = "Residuals", ylab = "Residual Value")
 abline(h = 0, col = "red")
 ```
 
-
-# 6. Use of Generative AI (notes from everyone to collect and formulate)
-– how you used generative AI in redacting the group work (code-related questions,
-generate text, explain concepts…)
-– what was easy/hard/impossible to do with generative AI
-– what you had to pay attention to/be critical about when using the results obtained
-through the use of generative AI
+# 6. Use of Generative AI 
+As concerns the use of Generative AI, it supported modelling understanding and coding syntax. In the first case, it has been useful to evaluate what kind of model perform (i.e. whether a classification or regression model would have been more appropriate). However, other references in the literature have been considered to validate the response and to select the metrics for the model evaluation metrics.
+The use of GenAI also helped to speed up the coding activity when testing different solutions or plotting results, as well as understanding synthax errors.
 
 # 7. Conclusions (together at the end)
-- Summary of key insights
-- Predictive Model Performance (can we answer our research questions?)
-- Implications
-- Limitations
-- Future work 
+## 7.1 Summary of key insights - could we answer our questions?
+
+## 7.2 Predictive Model Performance
+...... models sum-up
+The generalized linear models for multinational variables gave accuracy, for both price and occupancy rate categories predictions, less than 50% that cannot be representative of good performance. However, the evaluation of the coefficients explained that bathrooms, accommodates, latitude, and minimum_nights are strong determinants for the price category, while and the main influence of bathrooms, beds, bedrooms, accommodates, and minimum number have effect on the occupancy rate model.
+Support Vector Regression model provided also not satisfactory results for the price prediction and did not performed for the occupancy rate prediction.
+## 7.3 Implications
+## 7.4 Limitations
+The low performance of the different models could be imposed by the data distribution and the presence of outliers that might influence irremediably some of the models.
+## 7.5 Future work
+Further achievements can be obtained with a more in-depth analysis of data and a more selective approach toward the variables. 
 
 # 8. References 
 - website
