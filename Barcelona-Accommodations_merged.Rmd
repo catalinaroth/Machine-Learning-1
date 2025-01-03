@@ -1007,10 +1007,9 @@ cat("\nModel Summary (End):\n")
 cat(tail(model_summary, 6), sep = "\n")  # Show the last 6 lines
 ```
 
-Only four predictors might not have effect in price. And all the rest seem to have effect in the response variable.
-However,the linear regression model explains approximately 30% of the variability in accommodation prices in Barcelona (Adjusted R-squared: 0.3021, with average deviation of the observed values from the values predicted by a regression mode (RSE) 90.44 wich is relativily high for the range of prices.
+Only four predictors appear to have no significant effect on price, while the rest seem to influence the response variable. However, the linear regression model explains approximately 30% of the variability in accommodation prices in Barcelona (Adjusted R-squared). The average deviation of the observed values from those predicted by the regression model (RSE) is around 91, which is relatively high given the range of prices.
 
-With this results and the response variable is positive in the whole range, applying the transformed log to the response variable can help to improve the performance.
+With these results, and given that the response variable is positive throughout its entire range, applying a logarithmic transformation to the response variable could help improve the model's performance.
 
 ```{r range price, echo=FALSE, results='hide' }
 range(BCN_Accomm$price, na.rm = TRUE)
@@ -1018,7 +1017,7 @@ range(BCN_Accomm$price, na.rm = TRUE)
 
 Comparing price with transforming response variable ---> log(price) through following boxplots.
 
-```{r boxplot log price, echo = FALSE , fig.width=4, fig.height=3}
+```{r boxplot log price, echo = FALSE , fig.width=5, fig.height=5}
 par(mfrow = c(1, 2))  # 1 fila, 2 columnas
 
 # Boxplot original price
@@ -1036,12 +1035,12 @@ boxplot(log(BCN_Accomm$price),
 par(mfrow = c(1, 1))
 ```
 
-As observed in the boxplots comparison, the log transformation reduces the skewness of the price distribution, resulting more symmetrical distribution.
-The boxplot of price shows its distribution highly skewed whereas in the boxplot log transformation compresses the range and reduce the impact of the extremes values. The distributions appears more symmetrical, which might be desirable for linear regression, improving model robustness and better fit
+As observed in the boxplot comparison, the log transformation reduces the skewness of the price distribution, resulting more symmetrical distribution.
+The boxplot of price shows highly skewed distribution, whereas the boxplot after the log transformation compresses the range and reduces the impact of extreme values. The resulting distribution appears more symmetrical, which is desirable for linear regression, as it can improve model robustness and provide a better fit.
 
-Graphically view distribuition of _accommodates_ predictor regarding log price.
+The following boxplot visualizes the relationship between the number of guests (accommodates) and the log-transformed price. This helps to identify how the price distribution varies across different accommodation capacities
 
-```{r boxplot log price accomodates, echo=FALSE, fig.width=5, fig.height=3, results='hide'}
+```{r boxplot log price accomodates, echo=FALSE, fig.width=6, fig.height=5, results='hide'}
 options(repr.plot.width = 6, repr.plot.height = 4)
 boxplot(log(price) ~ accommodates, data = BCN_Accomm, 
         main = "Boxplot of Log(Price) by Number of Accommodates",
@@ -1049,9 +1048,8 @@ boxplot(log(price) ~ accommodates, data = BCN_Accomm,
         ylab = "Log(Price)")
 ```
 
-Fit the model and check the performance of the model with transformed log(price). Not show as intermediate step model (Details RMarkdon).
-
-```{r lm log, echo=FALSE, resuls='hide'}
+Fit the linear model and check the performance of the model with transformed log(price). 
+```{r lm log, echo=FALSE}
 lm.BCN_Accomm.total_num.transf<- lm(log(price) ~ host_listings_count+ latitude + longitude + accommodates + bathrooms 
                                 + bedrooms + beds + minimum_nights + availability_30  + availability_60 +
                                   availability_90+ review_scores_rating + availability_365+ number_of_reviews_ltm, 
@@ -1059,33 +1057,30 @@ lm.BCN_Accomm.total_num.transf<- lm(log(price) ~ host_listings_count+ latitude +
 summary(lm.BCN_Accomm.total_num.transf) 
 ```
 
-The results _lm.BCN_Accomm.total_num.transf_ of RSE 0.57 and R-squared 0.46 improve with the log price transformation.
-Regarding the variables might not have effect in the response variable are: _bedrooms_ and _availability_90_. 
+The results _lm.BCN_Accomm.total_num.transf_ of RSE and R-squared improve with the log price transformation.
+In general, all the predictors seem to have impact on the response variable apart from few as _availability_90_. 
 They will be removed from the model.
 
 ### 5.5.3 Collineraty
 
-We inspect the correlation of bedrooms with other similar variables:
+After inspecting the correlation of bedrooms with other similar variables, reveals certain degree of redundancy, as these variables likely capture similar information about accommodation capacity. 
 
 ```{r cor , echo=FALSE}
 cor(BCN_Accomm[c("bathrooms", "accommodates", "beds", "bedrooms")])
 ```
 
-There are strong correlations among accommodates, beds, and bedrooms, which may indicate redundancy in the dataset. 
-
 ```{r vif BCN_Accomm.total_num.transf, echo=FALSE}
 vif(lm.BCN_Accomm.total_num.transf)
 ```
 
-Predictors with GVIF > than 5: suggest multicollinearity with other predictors . 
+Predictors with GVIF greater than 5: suggest multicollinearity with other variables . 
 Therefore, the availability_* variables are correlated with each other or with other predictors in the model.
 _availability_60_ and _availability_90_   will be removed from the model.
 
 ### 5.5.4 Refitting the model with insights.
 
-Removing from the model those predictors (due to the no effect in the response variable and the multicollinearity )
-The total result model _lm.BCN_Accomm.total_num.0_ is not showed, as is step model. More details RScript.
-The last part summary shows:
+Removing from the model those predictors which seem not to have an effect on the response variable or show multicollinearity. The total result model _lm.BCN_Accomm.total_num.0_ is not shown, as it is an intermediate step in the modeling process. 
+The last part of the summary shows:
 
 ```{r lm.BCN_Accomm.total_num.0, echo=FALSE}
 lm.BCN_Accomm.total_num.0<- update (lm.BCN_Accomm.total_num.transf ,
@@ -1094,21 +1089,21 @@ lm.BCN_Accomm.total_num.0<- update (lm.BCN_Accomm.total_num.transf ,
 tail(capture.output(summary(lm.BCN_Accomm.total_num.0)))
 ```
 
-collinearity (no show more detail RScript )
+Check again collinearity (no show more detail RScript )
 
 ```{r vif lm.BCN_Accomm.total_num.0, echo=FALSE, results='hide'}
 vif(lm.BCN_Accomm.total_num.0)
 ```
 
 In the model _lm.BCN_Accomm.total_num.0_ the VIF values are all within acceptable ranges regarding multicollinearity.
-R-squared: 0.4637 indicates that approximately 46.4% of the variability in the log-transformed accommodation price is explained by the predictors in the model.Adjusted R-squared: 0.4631 accounts for the number of predictors and provides a slightly more conservative estimate. All the predictors seems to have a effect in the response variable in different levels. The interpretation of coefficients will be done with the complete linear model. RSE=0.57. 
+the model explains a substantial proportion of the variability in the log-transformed accommodation price, with all predictors showing varying levels of effect on the response variable. 
 This linear model _lm.BCN_Accomm.total_num.0_ will be used to merger with categorical variables, later on.
 
 ### 5.5.5 Categorical Predictors
 
 Some briefly reasons about the categorical variables included or not in the linear model (besides EDA reasons):
 
-_X_, _id_, _host_id_ as Identifying variables, they will not be considered relevant predictors.
+_X_, _id_, _host_id_ as identifying variables, they will not be considered relevant predictors.
 _Zipcode_ gives information about location. Zipcode was excluded as latitude and longitude provide more precise localization information, making zipcode redundant. However, neighbourhood will be include iniatially. (EDA reasons)
 
 Regarding original layout of _amenities_ in the dataset for being directly treated as factor is too complex. 
@@ -1130,7 +1125,8 @@ head(unique(BCN_Accomm$has_availability))
 
 _has_availability_ only one level, not taking in consideration for modelling
 
-Test if the different level of neighbourhood, property type, room type or if the host is superhost have different influences on the log (price) of the accommodation. Boxplots are used to visualize the effect of these categorical variables.
+To evaluate the influence of the rest categorical variables on the log-transformed accommodation price, boxplots were generated for _host_is_superhost_, _neighbourhood_, _property_type_, and _room_type_. 
+The boxplots provide a preliminary overview of how these factors might impact the response variable.
 
 ```{r graph factors, echo=FALSE,fig.width=10, fig.height=6}
 # Set up the plotting area for 2 rows and 2 columns
@@ -1153,9 +1149,11 @@ boxplot(log(price) ~ room_type, data = BCN_Accomm,
 par(mfrow = c(1, 1))
 ```
 
-Fit starting model with **only categorical variables**
-To test categorical variables more than two levels _drop1()_ function must be used. Furthermore, results obtained with the drop1() function are unaffected from the ordering of the predictors.
-All the factors seem to have effect in the transformed log price. 
+A starting model is fitted with **only categorical variables** called _lm_categorical_. This model includes host_is_superhost, neighbourhood, property_type, and room_type as predictors.
+To test the effects of categorical variables with more than two levels _drop1()_ function must be used. Furthermore, results obtained with the drop1() function are unaffected from the ordering of the predictors.
+The results indicate that all the included factors have a significant effect on the log-transformed price.
+
+For brevity, the detailed output of _lm_categorical_ and the drop1() results are not displayed, as this model will be merged with numerical variables in subsequent steps to create a more comprehensive model. (More details Rscript)
 
 ```{r categorical variables, echo=FALSE, results='hide'}
 lm_categorical <- lm (log(price) ~ host_is_superhost + neighbourhood+
@@ -1168,7 +1166,7 @@ drop1(lm_categorical, test="F")
 ### 5.5.6 Numeric and categorical variables
 
 Let´s add these four factors to the chosen previous linear model (only continous variables) seen before: (5.2.2)
-And analysis results:
+And analysis results in the following linear model _lm_BCN_Accomm_:
 
 ```{r lm numeric plus factor , echo =FALSE}
 lm_BCN_Accomm <- update(lm.BCN_Accomm.total_num.0,
@@ -1179,17 +1177,18 @@ drop1(lm_BCN_Accomm, test="F")
 
 tail(capture.output(summary(lm_BCN_Accomm)))
 ```
-
-The goodness of the model improve comparing only numeric lm *lm.BCN_Accomm.total_num.0* as Adjusted R-Squared is 0.5695 and RSE is 0.511.
-_availability_365_ seems not to have effect on the response variable.It will be removed. 
+The model summary indicates that the residuals are reasonably small. The R-squared and adjusted R-squared values demonstrate that a substantial portion of the variability in the log-transformed price is explained by the predictors in the model.
+ _availability_365_ seems not to have effect on the response variable. It will be removed. 
 The rest of predictors and factors seem to have impact on response variable.
-Lets check the multicollinearity
+
+Multicollinearity:
 
 ```{r collinearity lm_BCN_Accomm, echo=FALSE}
 vif (lm_BCN_Accomm)
 ```
 
-Based on the output: _neighbourhood_ with GVIF 69.1 should be remove due to its collinearity, probably with _latitude_ and _longitud_ GVIF >5.
+The results indicate that most predictors fall within acceptable GVIF (lower than 5). 
+However, neighbourhood factor has higher GVIF value.
 Also, between _beds_ and _accommodates_ might have some collinearity so as _beds_ seem to have less impact in response variable than _accommodates_; beds will be removed to check the collinearity afterwards.
 
 Refiting the linear model with these findings and check results _lm_BCN_Accomm.1_: 
@@ -1209,10 +1208,7 @@ Check the collinearity:
 vif (lm_BCN_Accomm.1)
 ```
 
-Removing neighbourhood makes than the GVIF latitude and longitude get values around 1. 
-Also accommodates reduce GVIF to addecuate value of collinearity.
-Realizing than  Adjuste R Squared an RSE from the previous model it was just a bit better. In this linear model is Adjusted R-squared: 0.55 and RSE 0.52.
-It is really very small difference but avoiding the collinearity gives more stability to the model.
+Removing _neighbourhood_ significantly reduces the GVIF for latitude and longitude, bringing their values closer to 1 and improving the model's stability. Similarly, the GVIF for _accommodates_ decreases to an acceptable value
 The interpretation of coefficients will be explained further on with final linear model.
 
 ### 5.5.7 Study some interactions
@@ -1258,14 +1254,14 @@ BCN_Accomm$host_is_superhost <- as.factor(BCN_Accomm$host_is_superhost)
 
 ```{r lm_BCN_Accomm.int, echo=FALSE}
 lm_BCN_Accomm.int <- update (lm_BCN_Accomm.1,
-                            . ~ . + availability_30 * room_type +accommodates * host_is_superhost)
+                            . ~ .  + availability_30 * room_type +accommodates * host_is_superhost)
 
 drop1(lm_BCN_Accomm.int, test="F")
 
 tail(capture.output(summary(lm_BCN_Accomm.int)))    
 ```
 
-Comparing with model _lm_BCN_Accomm.1_ The difference in adjusted R squared is minimal (0.0006), suggesting that the interactions terms add very little explanatory power to the model.The RSE is slightly lower in the model with interactions, which indicates a marginal improvement. 
+Comparing with model _lm_BCN_Accomm.1_ The difference in adjusted R squared is almost minimal, suggesting that the interactions terms add very little explanatory power to the model.The difference RSE is very short comparing with the model with interactions, which indicates a marginal improvement. 
 These results suggest that these interaction terms have a meaningful impact on the response variable, even though their contribution to the overall model fit is small.
 The improvement from adding interactions might not justify the additional complexity.
 
