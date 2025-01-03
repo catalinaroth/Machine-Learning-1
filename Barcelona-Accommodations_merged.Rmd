@@ -1819,8 +1819,10 @@ Review Scores Rating: Higher review scores are negatively associated with the re
 Host is Superhost: Being a superhost negatively affects the response variable, indicating that this attribute may not always align with the outcome being measured.
 
 (Further details on the exponential transformed coefficients can be found in the accompanying R script)
-```{r exp coef glm_quasi_updated, Echo=FAlSE, results='hide', message=FALSE, warning=FALSE}
+```{r exp coef glm_quasi_updated, Echo=FALSE, results='hide'}
+
 exp(coef(glm_quasi_updated))
+
 ```
 
 
@@ -1905,7 +1907,7 @@ Accommodation 1: Minimum Nights: 3, Bathrooms: 1, Reviews: 20, Rating: 90, Super
 Accommodation 2: Minimum Nights: 5, Bathrooms: 2, Reviews: 50, Rating: 95, Superhost: No, Room Type: Entire Home/Apt, Property Type: House
 Accommodation 3: Minimum Nights: 7, Bathrooms: 3, Reviews: 100, Rating: 85, Superhost: Yes, Room Type: Shared Room, Property Type: Boat
 
-```{r predictions new data , echo=FALSE}
+```{r predictions new data , echo=FALSE, error= TRUE}
 # Create a new dataset with the selected variables
 new_data <- data.frame(
   minimum_nights = c(3, 5, 7),             # Example minimum stays
