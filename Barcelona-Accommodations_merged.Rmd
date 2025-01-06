@@ -1,6 +1,6 @@
 ---
 title: "Machine Learning Methods: Analysing Barcelona Accommodations"
-author: "Martina Diaz, Fatima Barcina, Catalina Roth"
+author: "Fatima Barcina, Martina Diaz, Catalina Roth"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -25,7 +25,7 @@ options(repos = c(CRAN = "https://cran.rstudio.com/"))
 ```
 
 ```{r setup!, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, 
+knitr::opts_chunk$set(echo = FALSE, 
                       warning = FALSE, message = FALSE)
 # options(repos = c(CRAN = "https://cran.rstudio.com/"))
 ```
@@ -84,6 +84,7 @@ To achieve this goal, the team has decided to analyse and address three question
 3. **How accurately can machine learning predict Airbnb prices in Barcelona? Which models perform best for this dataset?**
 
 ## 1.2 Motivations
+
 Barcelona is one of the most visited cities in Europe, and the rise of Airbnb and other short-term rental platforms has led to a notable increase in tourism. However, this growth also presents challenges for accommodation businesses and the local housing market. A study conducted by the Social Science Research Network (<span style="color:blue">SSRN, link: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3428237</span>) revealed that rental costs in neighborhoods with high Airbnb activity increased by 7% between 2009 and 2016. This is primarily due to the fact that property owners, motivated by the demand from tourists seeking short-term rentals, frequently opt to lease their properties at higher rates during the short term rather than committing to long-term leases.
 
 For these reasons, it is crucial for tourism companies to understand this dynamic market to remain competitive and provide tailored services to their clients.
@@ -91,6 +92,7 @@ For these reasons, it is crucial for tourism companies to understand this dynami
 The Zürich-based tourism company needs reliable data on Airbnb prices and occupancy rates to make data-driven recommendations and stay ahead of competitors.
 
 ## 1.3 Disclaimer
+
 This analysis is for educational purposes only. The findings are based on public data and are not professional advice. The results should not be used for business or policy decisions.
 
 ## 1.4 Dataset selected
@@ -104,9 +106,7 @@ The dataset consists of 19.833 observations across 25 variables, including geogr
 BCN_Accomm_full <- read.csv("Cleaned_airbnb_barcelona.csv")
 ```
 
-Below, we can see the structure of the dataset, and the names and data types for each column.
-
-```{r Structure dataset, echo = FALSE}
+```{r Structure dataset, include = FALSE}
 # Structure
 glimpse(BCN_Accomm_full)
 ```
@@ -171,7 +171,7 @@ The different models to be developed are:
 
 ## 3.1 Converting Price variable to numeric
 
-First, the pricing variable will be converted into a numeric format, and in the fifth chapter of this report (Machine Learning Models), the categorical variables will be transformed into factors for further analysis and modeling.
+First, the pricing variable is converted into a numeric format, and in the fifth chapter of this report (Machine Learning Models), the categorical variables will be transformed into factors for further analysis and modeling.
 
 ```{r Convert price to numeric, include=FALSE}
 BCN_Accomm_sub$price <- gsub(",", "", BCN_Accomm_sub$price) # removed ','
@@ -187,20 +187,20 @@ We inspect the dataset to have idea about possible missing values, their amount 
 print('Location of missing values')
 # find location of missing values column wise
 miss_values <- sapply(BCN_Accomm_sub, function(x) which(is.na(x)))
-print(miss_values)
+miss_values
 ```
 
-```{r Count missing values per columns, echo=FALSE}
+```{r Count missing values per columns, include=FALSE}
 # count the missing values column wise
 miss_values_col <- sapply(BCN_Accomm_sub, function(x) sum(is.na(x)))
-print(miss_values_col)
+miss_values_col
 ```
 
-```{r patt-miss-values, echo = FALSE}
+```{r patt-miss-values, include=FALSE}
 md.pattern(BCN_Accomm_sub, rotate.names = TRUE)
 ```
 
-```{r tab-miss-values, echo = FALSE}
+```{r tab-miss-values, include=FALSE}
 # Total observations
 total_rows <- nrow(BCN_Accomm_sub) 
 
@@ -212,20 +212,25 @@ missing_values <- data.frame(
 
 # Order DataFrame table in descending order
 missing_values <- missing_values[order(-missing_values$Missing_Count), ]
+```
 
+```{r table-missing-values}
 # Display the table
-knitr::kable(missing_values, 
+knitr::kable(
+  head(missing_values,5), 
              caption = "Missing Values by Variable",
              align = "c")
 ```
 
-### 3.2.1 How to manage Missing values for each field (MD) 
+_host_listings_count_ : since is not possible to make any calculation on the number of listing of the host, we exclude the 22 rows that lack of it.
 
-host_listings_count : since is not possible to make any calculation on the number of listing of the host, we exclude the 22 rows that lack of it.
-bathrooms : the number of bathrooms is missing in 6 rows. 
-beds : the number of beds is not specified for 18 assets. 
-bedrooms : 2 rows contains missing value and can be deleted.
-review_scores_rating : the review score rating is missing in 2415 rows of 10000. It's a quite relevant percentage, around the 24% of the data we selected. In this case we decide to impute the missing values replacing it with the value 0.
+_bathrooms_ : the number of bathrooms is missing in 6 rows. 
+
+_beds_ : the number of beds is not specified for 18 assets. 
+
+_bedrooms_ : 2 rows contains missing value and can be deleted.
+
+_review_scores_rating_ : the review score rating is missing in 2415 rows of 10000. It's a quite relevant percentage, around the 24% of the data we selected. In this case we decide to impute the missing values replacing it with the value 0.
 
 ```{r imputation_review_score_rating, include = FALSE}
 # Create a new data frame with the imputed review_scores_rating column
@@ -235,34 +240,29 @@ imp_BCN_Accomm_sub <- BCN_Accomm_sub %>%
 md.pattern(imp_BCN_Accomm_sub, rotate.names = TRUE)
 ```
 
-Eventually, the other fields that present missing values do not allow to replace the empty data with estimates (average, mean, ...) so called imputation. This fields include in total 48 assets that represent 0.48% of the total assets and allows to delete the entire rows without loosing too much information.
-
 ```{r removing-rows, include = FALSE}
 BCN_Accomm <- na.omit(imp_BCN_Accomm_sub) # from this point we'll use this data set
 md.pattern(BCN_Accomm, rotate.names = TRUE)
 ```
 
-## 3.3 Correlation matrix
+## 3.3 Correlation matrix among numeric variables
 
-```{r correlation_matrix_numeric_fields, echo = FALSE}
+```{r correlation_matrix_numeric_fields}
 # Create a correlation matrix for numeric fields
 cor_BNC_Accomm <- select_if(BCN_Accomm, is.numeric) %>%
   select(-c(id, X, host_id))
 
 # make a data frame
 cor_BNC_Accomm <- data.frame(cor_BNC_Accomm)
-str(cor_BNC_Accomm)
 
 # print correlation matrix
 corrplot(cor(cor_BNC_Accomm), type = "upper", order = "hclust", tl.col = "black")
 ```
 
-From the correlation matrix is possible to deduct the following characteristics:
-- there's almost no correlation between availability periods and number of beds, bedrooms, bathrooms. It would suggest that the availability of the house do not depend from those features, rather probably from the location and facilities.
-- there is a positive correlation between number of bedrooms, beds and bathrooms.
-- there is a positive correlation between the availability periods. 
+From the correlation matrix is possible to deduct that there's almost no correlation between availability periods and number of beds, bedrooms, bathrooms. It would suggest that the availability of the properties does not depend from those features, rather probably from the location and facilities.
+We can also observe that there is a positive correlation between number of bedrooms, beds and bathrooms, as also a positive correlation between the different availability periods. 
 
-## 3.4 Outliers (boxplots) (detect and treat)
+## 3.4 Outliers: detect and treat
 Since the price variable is a key focus of our analysis, an outlier analysis of this variable has been conducted.
 
 ### 3.4.1 Count of outliers in Price
@@ -287,7 +287,7 @@ outliers_count
 
 Out of a total of 10,000 values, 804 (8.04%) are identified as outliers. Below, a boxplot is presented to visualize the median and the outlier observations.
 
-```{r Boxplot Price, echo = FALSE}
+```{r Boxplot Price}
 # Boxplot for price variable
 boxplot(BCN_Accomm$price, 
         horizontal = TRUE,
@@ -312,7 +312,7 @@ The significant number of observations with higher prices could suggest the pres
 
 ### 3.4.2 Detecting Top 20 Price Outliers
 
-```{r Filter outliers, echo = FALSE}
+```{r Filter outliers}
 # Filter rows Outliers
 outlier_extremes <- BCN_Accomm_sub_outlier%>%
   filter(is_outlier == TRUE) %>%
@@ -330,7 +330,7 @@ It seems that the price variable may contain erroneous entries. For further anal
 
 The new summary for tha Price variable is the following:
 
-```{r Filter price lesss than 1000, echo=FALSE}
+```{r Filter price lesss than 1000}
 # Filter dataset
 BCN_Accomm <- BCN_Accomm %>%
   filter(price <= 1000)
@@ -339,14 +339,13 @@ summary(BCN_Accomm$price)
 
 Now, a new Correlation Matrix with the filtered observations of the price variable is displayed.
 
-```{r New correlation_matrix_numeric_fields, echo = FALSE}
+```{r New correlation_matrix_numeric_fields}
 # Create a correlation matrix for numeric fields
 cor_BNC_Accomm_new <- select_if(BCN_Accomm, is.numeric) %>%
   select(-c(id, X, host_id))
 
 # make a data frame
 cor_BNC_Accomm_new <- data.frame(cor_BNC_Accomm_new)
-str(cor_BNC_Accomm)
 
 # print correlation matrix
 corrplot(cor(cor_BNC_Accomm_new), type = "upper", order = "hclust", tl.col = "black")
@@ -360,7 +359,7 @@ On the other hand, general availability and review scores have little impact on 
 
 ### 3.5.1 Histograms for Numerical Variables
 
-```{r Histograms Numerical Variables, echo=FALSE}
+```{r Histograms Numerical Variables}
 
 # Reshape the data set to long format
 BCN_Accomm_hist <- BCN_Accomm %>%
@@ -391,7 +390,7 @@ On the other hand, the data suggests that in Barcelona, Airbnb listings are prim
 
 ### 3.5.2 Pie Charts for Binary Variable "Host_is_superhost"
 
-```{r Superhost Status, echo=FALSE}
+```{r Superhost Status}
 # Calculate percentages and relabel values
 superhost_data <- BCN_Accomm %>%
   count(host_is_superhost) %>%
@@ -429,7 +428,7 @@ Almost 19% of the hosts offering an Airbnb in Barcelona are not categorized as S
 
 This section presents a variety of plots for the categorical variables, including Property Type, Room Type, Top Neighbourhoods, and Amenities.
 
-```{r Top 10 property types, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Top 10 property types}
 # Filter for the top 10 property types and calculate percentages
 top_property_types <- BCN_Accomm %>%
   count(property_type, sort = TRUE) %>%
@@ -454,7 +453,7 @@ From the plot above, it can be observed that apartments dominate the Airbnb mark
 
 On the other hand, the low availability of luxury or specialized accommodations, such as Boutique Hotels (0.5%), Guest Suites (0.7%), and Lofts (2.4%), suggests that these property types cater to a niche market. Travelers opting for these accommodations are likely visiting Barcelona for specific reasons, such as work or unique travel experiences.
 
-```{r Barplots Room Type, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Barplots Room Type}
 # Reshape the dataset to long format 
 BCN_Accomm_long <- BCN_Accomm %>%
   pivot_longer(cols = c(room_type), names_to = "variable", values_to = "value")
@@ -481,7 +480,7 @@ The majority of Room Type are split between Entire home/Apartment and Private Ro
 
 Less than 1% of the hosts offer Shared Room, which suggests that travelers prefer more privacy during the stay.
 
-```{r Top 10 Neighbourhoods, echo=FALSE, message=FALSE, warning=FALSE}
+```{r Top 10 Neighbourhoods}
 # Filter for the top 10 neighbourhoods and calculate percentages
 top_neighbourhoods <- BCN_Accomm %>%
   count(neighbourhood, sort = TRUE) %>%
@@ -512,7 +511,7 @@ Given this, the Tourism Company in Zürich could recommend that its clients focu
 
 ### 3.5.4 Worldcloud for Amaneties
 
-```{r Wordcloud for amanities, echo=FALSE}
+```{r Wordcloud for amanities}
 # Combine all amenities into a single text string and clean it
 amenities_text <- BCN_Accomm$amenities %>%
   paste(collapse = " ") %>%                # Combine all rows into one string
@@ -534,11 +533,8 @@ The Wordcloud above, provides the most common amenities offered by the different
 
 The most prominent amenities are: Kitchen, Wifi, Heating, Washer and Hair dryer. his can be taken to indicate that tourists may consider a place to be comfortable for their stay if it meets these basic requirements.
 
-## 3.6 Summary Statistics
-
-
-```{r numeric variables , echo=FALSE, results='hide'}
-# Overall Summary: High level statistical overview of all numericvariables in the dataset.
+```{r numeric variables, include = FALSE}
+# Overall Summary: High level statistical overview of all numeric variables in the dataset.
 
 #Concise statistical summary of all the numeric variables:
 # Filter numeric variables manually
@@ -549,7 +545,7 @@ numeric_variables <- BCN_Accomm %>%
 summary(numeric_variables)
 ```
 
-```{r summary-large table numeric-variables, echo= FALSE, results='hide'}
+```{r summary-large table numeric-variables, include = FALSE}
 # Filter numeric variables
 numeric_variables <- BCN_Accomm %>%
   select_if(is.numeric) 
@@ -572,7 +568,7 @@ knitr::kable(numeric_summary,
              align = "c")
 ```
 
-```{r summary-related to pricing variables, echo=FALSE, results='hide'}
+```{r summary-related to pricing variables, include = FALSE}
 # Filter relevant columns for objective
 # 1. Variables to analyze price
   
@@ -597,7 +593,7 @@ knitr::kable(price_stats,
              align = "c")
 ```
 
-```{r summary-related to availability, echo=FALSE, results='hide'}
+```{r summary-related to availability, include = FALSE}
 # 2. Variables related availability
 availability_variables <- BCN_Accomm %>%
   dplyr::select(minimum_nights, availability_30, availability_60, 
@@ -623,7 +619,7 @@ knitr::kable(availability_stats,
              align = "c")
 ```
 
-```{r summary categorical variables, echo=FALSE, results='hide'}
+```{r summary categorical variables, include = FALSE}
 #Summary Statistics for Categorical Variables
 
 # Select the most relevant categorical variables
@@ -663,7 +659,7 @@ This section was designed to allow the employees of the Tourism Company and othe
 
 The purpose of the following interactive plot is to allow users to select a neighborhood of interest and visualize, on a map, the different accommodations available along with their price per night when one of the circles is clicked.
 
-```{r  Airbnb locations, echo = FALSE}
+```{r  Airbnb locations}
 # Replace "BCN_Accomm" with your actual data frame
 filtered_data <- BCN_Accomm
 
@@ -692,7 +688,7 @@ In contrast, the zones colored in green or blue represent lower-priced neighborh
 
 According to the heatmap, the Tourism Company can recommend the red zones to tourists looking for more centralized accommodations, regardless of price. On the other hand, tourists who want to save money can be advised to choose accommodations in the green or blue areas, which are typically farther from the city center.
 
-```{r Heatmap of prices, echo = FALSE}
+```{r Heatmap of prices}
 # Mean price per neighbourhood 
 neighborhood_means <- BCN_Accomm %>%
     group_by(neighbourhood) %>%
@@ -731,7 +727,7 @@ leaflet(data = BCN_Accomm) %>%
 
 ## 4.3 Review Score Rating vs. Price by Room Type
 
-```{r Review Score Rating vs. Price by Room Type, echo = FALSE, warning=FALSE}
+```{r Review Score Rating vs. Price by Room Type}
 #display.brewer.all() #Visualize color palette
 ggplot(BCN_Accomm, aes(x = review_scores_rating, y = price, color = room_type)) +
   geom_point(alpha = 0.6) + 
@@ -761,9 +757,9 @@ $$
 \text{Occupancy Rate} = \left(1 - \frac{\text{Availability 30 Days}}{\text{Total Days = 30}}\right) \times 100
 $$
 
-According to the formula above, a new columns with the Occupancy rate is calculated and the head data of the new variable Occupancy_rate_30 is:
+According to the formula above, a new columns with the Occupancy rate is calculated.
 
-```{r New column for Occupancy rate, echo = FALSE}
+```{r New column for Occupancy rate, include=FALSE}
 # Create a new column for occupancy rate
 BCN_Accomm$occupancy_rate_30 <- (1 - BCN_Accomm$availability_30 / 30) * 100
 
@@ -777,7 +773,7 @@ With this new predictor, the occupancy rate in the next 30 days is going to be p
 As mentioned in the previous chapters, the categorical variables are converted into factors to proceed with the modeling phase. These are: neighbourhood, property_type, room_type, availability_30, zipcode.
 Moreover, variables that represent counts or continuous numbers are converted into numeric: accommodates, bathrooms, bedrooms, beds, latitude, longitude, review_scores_rating and minimum_nights.
 
-```{r Covert categorical variables into factors, echo = FALSE}
+```{r Covert categorical variables into factors}
 # Remove rows with the unwanted neighborhoods
 BCN_Accomm <- BCN_Accomm[!(BCN_Accomm$neighbourhood %in% c("La Vall d'Hebron", "Torre Baró")), ]
 
@@ -841,9 +837,9 @@ test <- na.omit(test) # removing rows with NAs values might reduce the size of t
 
 ```
 
-Moreover, we assure that all factor variables have the same levels in the train and test sets, including a final check to assure that no NAs values are present as concerns numerical variables.
+We assure that all factor variables have the same levels in the train and test sets, including a final check to assure that no NAs values are present as concerns numerical variables.
 
-```{r, include = FALSE}
+```{r level-factors, include=FALSE}
 str(BCN_Accomm)
 # For all factor variables used in the model, ensure that the test factors have the same levels as train
 identical(levels(test$occupancy_rate_30), levels(train$occupancy_rate_30))
@@ -854,7 +850,7 @@ identical(levels(test$zipcode), levels(train$zipcode))
 identical(levels(test$availability_30), levels(train$availability_30))
 ```
 
-```{r, include =FALSE}
+```{r NAs-check, include = FALSE}
 # Ensure no NAs or infinite values in important numeric variables
 numeric_vars <- c("bathrooms", "bedrooms", "accommodates", "beds", 
                   "latitude", "longitude", "review_scores_rating", "minimum_nights", "price", "occupancy_rate_30")
@@ -864,7 +860,7 @@ sapply(numeric_vars, function(var) anyNA(test[[var]]))
 
 At this point, we prepare also the train and test sets in a normalized version that will be used in some of the models, naming them respectively train_normalized and test_normalized.
 
-```{r normalized-numeric, include = FALSE}
+```{r normalized-numeric, include=FALSE}
 # Numeric variables to normalize
 numeric_columns <- c("bathrooms", "bedrooms", "accommodates", "beds",
                      "latitude", "longitude", "review_scores_rating", "minimum_nights", "price")
@@ -886,7 +882,7 @@ str(train_normalized)
 str(test_normalized)
 ```
 
-As regards the categorical variable neighborhood, for some of the models, it needs to be encoded into numerical values. We apply a one-hot encoding so that each unique neighborhood will become a separate binary feature.
+Moreover, as regards the categorical variable neighborhood, for some of the models, it needs to be encoded into numerical values. We apply a one-hot encoding so that each unique neighborhood will become a separate binary feature.
 
 ```{r hot-encoding, include = FALSE}
 # One-hot encode 'neighbourhood' in train data for SVM (without including the reference level)
@@ -915,7 +911,7 @@ test_normalized_encod$neighbourhood <- NULL
 
 **Variables for Pricing Model**
 
-Next, based on the Correlation Matrix, showed in chapter 3.4, the variables used to address the first research question about price, are:
+Next, based on the Correlation Matrix, the variables used to address the first research question about price, are:
 
 - **`bedrooms`**
 - **`bathrooms`**
@@ -946,21 +942,21 @@ The variables used for the Occupancy rate in one month are:
 
 Before fitting the models, it is a good practice to have an overview of the relationships between response and predictors. This analysis will also support the decision on distributions and parameters to choose in the different models (i.e. which kernel for SVM, the family distribution in GLMs, ...).
 
-```{r price-predictors-numerical, echo = FALSE}
+```{r price-predictors-numerical}
 pairs(~ price + accommodates + bathrooms + bedrooms + beds + minimum_nights + latitude + longitude + review_scores_rating + occupancy_rate_30, data = train, main = "Matrix of quantitative variables against Price")
 ```
 
-```{r price-predictors-factors, echo = FALSE}
+```{r price-predictors-factors}
 pairs(~ price + room_type + property_type + neighbourhood , data = train, main = "Matrix of factor variables against Price")
 ```
 
 ## 5.4 Inspection of relationships between occupancy_rate_30 and the predictors
 
-```{r occupancy-predictors-numerical, echo = FALSE}
+```{r occupancy-predictors-numerical}
 pairs(~ occupancy_rate_30 + price + accommodates + bathrooms + bedrooms + beds + minimum_nights + latitude + longitude + review_scores_rating, data = train, main = "Matrix of quantitative variables against Occupancy rate")
 ```
 
-```{r occupancy-predictors-factors, echo = FALSE}
+```{r occupancy-predictors-factors}
 pairs(~ occupancy_rate_30 + price + room_type + property_type + neighbourhood , data = train, main = "Matrix of factor variables against Occupancy rate")
 ```
 
@@ -978,7 +974,7 @@ For this model variable availability_30 treat as numeric.
 To answer the question **2 Can we predict occupancy rates based on location, amenities, or other factors?** the baseline linear model is fitted with variables according to EDA and being analysis. The response variable the 
 calculate variable: *occupancy_rate_30*
 
-```{r convert to numeric, echo=FALSE, results='hide'}
+```{r convert to numeric}
 #Convert to a numeric variable
 BCN_Accomm <- BCN_Accomm %>%
   mutate(availability_30 = as.numeric(as.character(availability_30)))
@@ -986,7 +982,7 @@ BCN_Accomm <- BCN_Accomm %>%
 
 ### 5.5.2 Numeric Predictors
 
-For begin, fitting a baseline linear model with original dataset numeric predictors:
+As first step, a baseline linear model is performed with original dataset numeric predictors:
 
 ```{r linear model, echo= FALSE}
 lm.BCN_Accomm_total_num<- lm(price ~ host_listings_count+ latitude + longitude + accommodates + bathrooms + bedrooms + beds + minimum_nights + availability_30  + availability_60 + availability_90+ review_scores_rating + availability_365+ number_of_reviews_ltm, 
@@ -998,12 +994,12 @@ lm.BCN_Accomm_total_num<- lm(price ~ host_listings_count+ latitude + longitude +
 model_summary <- capture.output(summary(lm.BCN_Accomm_total_num))
 
 # Display the first few lines of the summary
-cat("Model Summary (Start):\n")
+# cat("Model Summary (Start):\n")
 cat(head(model_summary, 20
          ), sep = "\n")  # Show the first 20 lines
 
 # Display the last few lines of the summary
-cat("\nModel Summary (End):\n")
+# cat("\nModel Summary (End):\n")
 cat(tail(model_summary, 6), sep = "\n")  # Show the last 6 lines
 ```
 
@@ -1011,13 +1007,13 @@ Only four predictors appear to have no significant effect on price, while the re
 
 With these results, and given that the response variable is positive throughout its entire range, applying a logarithmic transformation to the response variable could help improve the model's performance.
 
-```{r range price, echo=FALSE, results='hide' }
+```{r range price, include = FALSE}
 range(BCN_Accomm$price, na.rm = TRUE)
 ```
 
 Comparing price with transforming response variable ---> log(price) through following boxplots.
 
-```{r boxplot log price, echo = FALSE , fig.width=7, fig.height=5}
+```{r boxplot log price, fig.width=8, fig.height=3}
 par(mfrow = c(1, 2))  # 1 fila, 2 columnas
 
 # Boxplot original price
@@ -1035,12 +1031,12 @@ boxplot(log(BCN_Accomm$price),
 par(mfrow = c(1, 1))
 ```
 
-As observed in the boxplot comparison, the log transformation reduces the skewness of the price distribution, resulting more symmetrical distribution.
+As observed in the boxplot, the log transformation reduces the skewness of the price distribution, resulting more symmetrical distribution.
 The boxplot of price shows highly skewed distribution, whereas the boxplot after the log transformation compresses the range and reduces the impact of extreme values. The resulting distribution appears more symmetrical, which is desirable for linear regression, as it can improve model robustness and provide a better fit.
 
 The following boxplot visualizes the relationship between the number of guests (accommodates) and the log-transformed price. This helps to identify how the price distribution varies across different accommodation capacities
 
-```{r boxplot log price accomodates, echo=FALSE, fig.width=6, fig.height=5, results='hide'}
+```{r boxplot log price accomodates, fig.width=8, fig.height=3}
 options(repr.plot.width = 6, repr.plot.height = 4)
 boxplot(log(price) ~ accommodates, data = BCN_Accomm, 
         main = "Boxplot of Log(Price) by Number of Accommodates",
@@ -1048,8 +1044,9 @@ boxplot(log(price) ~ accommodates, data = BCN_Accomm,
         ylab = "Log(Price)")
 ```
 
-Fit the linear model and check the performance of the model with transformed log(price). 
-```{r lm log, echo=FALSE}
+We check the performance of the model with transformed log transformation for the response variable price (the code is omitted in this output).
+
+```{r lm log}
 lm.BCN_Accomm.total_num.transf<- lm(log(price) ~ host_listings_count+ latitude + longitude + accommodates + bathrooms 
                                 + bedrooms + beds + minimum_nights + availability_30  + availability_60 +
                                   availability_90+ review_scores_rating + availability_365+ number_of_reviews_ltm, 
@@ -1065,38 +1062,35 @@ They will be removed from the model.
 
 After inspecting the correlation of bedrooms with other similar variables, reveals certain degree of redundancy, as these variables likely capture similar information about accommodation capacity. 
 
-```{r cor , echo=FALSE}
+```{r cor, include=FALSE}
 cor(BCN_Accomm[c("bathrooms", "accommodates", "beds", "bedrooms")])
 ```
 
-```{r vif BCN_Accomm.total_num.transf, echo=FALSE}
+```{r vif BCN_Accomm.total_num.transf, include=FALSE}
 vif(lm.BCN_Accomm.total_num.transf)
 ```
 
-From this second table, predictors with GVIF greater than 5: suggest multicollinearity with other variables . 
-Therefore, the availability_* variables are correlated with each other or with other predictors in the model.
-_availability_60_ and _availability_90_   will be removed from the model.
+Predictors with GVIF greater than 5 suggest multicollinearity with other variables. Therefore, the availability_* variables are correlated with each other or with other predictors in the model.
+_availability_60_ and _availability_90_ will be removed from the model.
 
-### 5.5.4 Refitting the model with insights.
+### 5.5.4 Refitting the model with insights
 
 Removing from the model those predictors which seem not to have an effect on the response variable or show multicollinearity. The total result model _lm.BCN_Accomm.total_num.0_ is not shown, as it is an intermediate step in the modeling process. 
 The last part of the summary shows:
 
-```{r lm.BCN_Accomm.total_num.0, echo=FALSE}
+```{r lm.BCN_Accomm.total_num.0}
 lm.BCN_Accomm.total_num.0<- update (lm.BCN_Accomm.total_num.transf ,
                                     . ~ . -bedrooms -availability_90- availability_60) 
 #summary (lm.BCN_Accomm.total_num.0)
 tail(capture.output(summary(lm.BCN_Accomm.total_num.0)))
 ```
 
-Check again collinearity (no show more detail RScript )
-
 ```{r vif lm.BCN_Accomm.total_num.0, echo=FALSE, results='hide'}
 vif(lm.BCN_Accomm.total_num.0)
 ```
 
-In the model _lm.BCN_Accomm.total_num.0_ the VIF values are all within acceptable ranges regarding multicollinearity.
-the model explains a substantial proportion of the variability in the log-transformed accommodation price, with all predictors showing varying levels of effect on the response variable. 
+In this model the VIF values are all within acceptable ranges regarding multicollinearity.
+The model explains a substantial proportion of the variability in the log-transformed accommodation price, with all predictors showing varying levels of effect on the response variable. 
 This linear model _lm.BCN_Accomm.total_num.0_ will be used to merger with categorical variables, later on.
 
 ### 5.5.5 Categorical Predictors
@@ -1106,14 +1100,14 @@ Some briefly reasons about the categorical variables included or not in the line
 _X_, _id_, _host_id_ as identifying variables, they will not be considered relevant predictors.
 _Zipcode_ gives information about location. Zipcode was excluded as latitude and longitude provide more precise localization information, making zipcode redundant. However, neighbourhood will be include iniatially. (EDA reasons)
 
-Regarding original layout of _amenities_ in the dataset for being directly treated as factor is too complex. 
+Regarding original layout of _amenities_ in the dataset for being directly treated as factor is too complex.  
 
-```{r amenities level, echo=FALSE, results='hide'}
+```{r amenities level, results='hide'}
 num_unique_amenities <- length(unique(BCN_Accomm$amenities))
 num_unique_amenities 
 ```
 
-Let´s focus on the rest factors:
+Let´s focus on the remaining factors.
 
 ```{r factors levels, echo=FALSE, results='hide'}
 head(unique(BCN_Accomm$host_is_superhost))
@@ -1123,12 +1117,12 @@ head(unique(BCN_Accomm$room_type))
 head(unique(BCN_Accomm$has_availability))
 ```
 
-_has_availability_ only one level, not taking in consideration for modelling
+_has_availability_ has only one level and is not taken into consideration for the model.
 
 To evaluate the influence of the rest categorical variables on the log-transformed accommodation price, boxplots were generated for _host_is_superhost_, _neighbourhood_, _property_type_, and _room_type_. 
 The boxplots provide a preliminary overview of how these factors might impact the response variable.
 
-```{r graph factors, echo=FALSE,fig.width=10, fig.height=6}
+```{r graph factors, fig.width=10, fig.height=6}
 # Set up the plotting area for 2 rows and 2 columns
 par(mfrow = c(2, 2))
 
@@ -1149,13 +1143,13 @@ boxplot(log(price) ~ room_type, data = BCN_Accomm,
 par(mfrow = c(1, 1))
 ```
 
-A starting model is fitted with **only categorical variables** called _lm_categorical_. This model includes host_is_superhost, neighbourhood, property_type, and room_type as predictors.
+A first model is fitted with **only categorical variables** called _lm_categorical_. This model includes host_is_superhost, neighbourhood, property_type, and room_type as predictors.
 To test the effects of categorical variables with more than two levels _drop1()_ function must be used. Furthermore, results obtained with the drop1() function are unaffected from the ordering of the predictors.
 The results indicate that all the included factors have a significant effect on the log-transformed price.
 
-For brevity, the detailed output of _lm_categorical_ and the drop1() results are not displayed, as this model will be merged with numerical variables in subsequent steps to create a more comprehensive model. (More details Rscript)
+For brevity, the detailed output of _lm_categorical_ and the drop1() results are not displayed, as this model will be merged with numerical variables in subsequent steps to create a more comprehensive model.
 
-```{r categorical variables, echo=FALSE, results='hide'}
+```{r categorical variables, include=FALSE}
 lm_categorical <- lm (log(price) ~ host_is_superhost + neighbourhood+
                                    property_type + room_type , 
                     data = BCN_Accomm)
@@ -1165,8 +1159,7 @@ drop1(lm_categorical, test="F")
 
 ### 5.5.6 Numeric and categorical variables
 
-Let´s add these four factors to the chosen previous linear model (only continous variables) seen before: (5.2.2)
-And analysis results in the following linear model _lm_BCN_Accomm_:
+Let´s add these four factors to the chosen previous linear model (only continous variables) seen before (5.2.2) and analyse results in the following linear model _lm_BCN_Accomm_:
 
 ```{r lm numeric plus factor , echo =FALSE}
 lm_BCN_Accomm <- update(lm.BCN_Accomm.total_num.0,
@@ -1177,24 +1170,25 @@ drop1(lm_BCN_Accomm, test="F")
 
 tail(capture.output(summary(lm_BCN_Accomm)))
 ```
+
 The model summary indicates that the residuals are reasonably small. The R-squared and adjusted R-squared values demonstrate that a substantial portion of the variability in the log-transformed price is explained by the predictors in the model.
  _availability_365_ seems not to have effect on the response variable. It will be removed. 
  _review_scores_rating _ shows only marginal significance due to its p-value, but it has been retained to see future performance for some practical reason, as guest ratings might be an important factor in the accommodation market.
 The rest of predictors and factors seem to have impact on response variable.
 
-Multicollinearity:
+Multicollinearity (code ommitted here).
 
-```{r collinearity lm_BCN_Accomm, echo=FALSE}
+```{r collinearity lm_BCN_Accomm, include=FALSE}
 vif (lm_BCN_Accomm)
 ```
 
-The results indicate that most predictors fall within acceptable GVIF (lower than 5). 
+The results of the multicollinearity analysis indicate that most predictors fall within acceptable GVIF (lower than 5). 
 However, neighbourhood factor has higher GVIF value.
 Also, between _beds_ and _accommodates_ might have some collinearity so as _beds_ seem to have less impact in response variable than _accommodates_; beds will be removed to check the collinearity afterwards.
 
-Refiting the linear model with these findings and check results _lm_BCN_Accomm.1_: 
+We re-fit the linear model with these findings _lm_BCN_Accomm.1_. 
 
-```{r lm_BCN_Accomm.1, echo=FALSE }
+```{r lm_BCN_Accomm.1, include=FALSE }
 lm_BCN_Accomm.1 <- update(lm_BCN_Accomm,
                . ~ . -availability_365  - neighbourhood- beds) 
 
@@ -1203,9 +1197,9 @@ drop1(lm_BCN_Accomm.1, test="F")
 tail(capture.output(summary(lm_BCN_Accomm.1)))
 ```
 
-Check the collinearity:
+We also check the collinearity (code ommitted here).
 
-```{r vif lm_BCN_Accomm.1, echo=FALSE}
+```{r vif lm_BCN_Accomm.1, include=FALSE}
 vif (lm_BCN_Accomm.1)
 ```
 
@@ -1214,9 +1208,9 @@ The interpretation of coefficients will be explained further on.
 
 ### 5.5.7 Study some interactions
 
-Performance some visual interactions among variables
+The following plots perform some visual interactions among the variables.
 
-```{r graphs interactions, echo=FALSE, message=FALSE, warning=FALSE}
+```{r graphs interactions}
 # First plot
 plot1 <- ggplot(BCN_Accomm, aes(x = accommodates, y = log(price))) +
   geom_point(alpha = 0.5) +
@@ -1248,44 +1242,42 @@ plot3 <- ggplot(BCN_Accomm, aes(x = availability_30, y = log(price))) +
 
 And after performance different combinations of interactions as for example:
 
-```{r convert as factor, echo = FALSE, results = 'hide'}
+```{r convert as factor, include = FALSE}
 BCN_Accomm$room_type <- as.factor(BCN_Accomm$room_type)
 BCN_Accomm$host_is_superhost <- as.factor(BCN_Accomm$host_is_superhost)
 ```
 
-```{r lm_BCN_Accomm.int, echo=FALSE}
+```{r lm_BCN_Accomm.int, include=FALSE}
 lm_BCN_Accomm.int <- update (lm_BCN_Accomm.1,
-                            . ~ .  + availability_30 * room_type +accommodates * host_is_superhost)
+                            . ~ . + availability_30 * room_type +accommodates * host_is_superhost)
 
 drop1(lm_BCN_Accomm.int, test="F")
 
 tail(capture.output(summary(lm_BCN_Accomm.int)))    
 ```
 
-Comparing with model _lm_BCN_Accomm.1_ The difference in adjusted R squared is almost minimal, suggesting that the interactions terms add very little explanatory power to the model.The difference RSE is very short comparing with the model with interactions, which indicates a marginal improvement. 
+Comparing with the model _lm_BCN_Accomm.1_ the difference in adjusted R squared is almost minimal, suggesting that the interactions terms add very little explanatory power to the model.The difference RSE is very short comparing with the model with interactions, which indicates a marginal improvement. 
 These results suggest that these interaction terms have a meaningful impact on the response variable, even though their contribution to the overall model fit is small.
 The improvement from adding interactions might not justify the additional complexity.
 
 Any new trial combinations results improve significantly the results getting.
 Therefore _lm_BCN_Accomm.1_ conclude as proposal linear model under all this reasons shows during the fitting.
 
-### 5.5.8 Analysis Linear model _lm_BCN_Accomm.1_ 
+### 5.5.8 Interpretation Final Linear model _lm_BCN_Accomm.1_ 
 
-```{r final lm _lm_BCN_Accomm.1_ , echo=FALSE }
+```{r final lm _lm_BCN_Accomm.1_}
 drop1(lm_BCN_Accomm.1, test="F")
 
 tail(capture.output(summary(lm_BCN_Accomm.1)))
 ```
 
-Based on the results, the variables with the most significant effects on the log-transformed price, as indicated by the F-values and p-values, are:
-_accommodates_: This is the strongest predictor, with an extremely high F-value, reflecting its critical role in determining pricing; _room_type_: Also highly significant, this variable captures substantial differences in pricing between types of accommodations, such as entire homes, private rooms, and shared rooms; _availability_30_; _minimum_nights_; _latitude_ and _longitude_; _host_is_superhost_.
+Based on the results, the variables with the most significant effects on the log-transformed price, as indicated by the F-values and p-values, arethe following. _Accommodates_: is the strongest predictor, with an extremely high F-value, reflecting its critical role in determining pricing; _room_type_: also highly significant, this variable captures substantial differences in pricing between types of accommodations, such as entire homes, private rooms, and shared rooms; _availability_30_; _minimum_nights_; _latitude_ and _longitude_; _host_is_superhost_.
 
 Other variables, such as _property_type_, _bathrooms_, and _number_of_reviews_ltm_, also contribute to the model, though their effects are relatively smaller. Meanwhile, variables like _review_scores_rating_ seems not to have impact on pricing.
 
 The adjusted R-squared for this model is approximately 0.55, indicating that about 55% of the variability in the log-transformed price is explained by the predictors included in the model. The residual standard error (RSE) suggests that the average deviation of observed prices from the predicted values is moderate, reflecting a reasonably good fit.
 
-Interpretation of Key Coefficients:
-```{r coefficients_lm, echo = FALSE, results = 'hide'}
+```{r coefficients_lm, include = FALSE}
 summary(lm_BCN_Accomm.1)
 
 # Extract coefficients from the model 
@@ -1295,7 +1287,8 @@ coefficients_lm <- coef(lm_BCN_Accomm.1)
 # Transform coefficients to the original scale 
 coefficients_transformed_lm <- exp(coefficients_lm)
 ```
-Based on the coefficient calculations (details not shown, more details RScript), several predictors stand out as highly relevant in explaining the variability in log-transformed accommodation prices:
+
+Based on the coefficient calculations, several predictors stand out as highly relevant in explaining the variability in log-transformed accommodation prices.
 
 Accommodates: This variable has a strong positive relationship with price, indicating that properties designed to host more guests are generally priced higher. 
 Room Type: The type of room plays a crucial role in pricing. Private rooms tend to be priced lower than entire homes, while shared rooms show an even more significant reduction in price.
@@ -1318,17 +1311,16 @@ Meaning: Adjusted R² accounts for the number of predictors in the model, provid
 _Residual Standard Error (RSE)_:
 Value: 0.52 aprox. Meaning: On average, the residuals deviate by about 0.52 units from the predicted values of log(price). This is a measure of the model's overall error.
 
-_Mean Absolute Error (MAE)_:
+_Mean Absolute Error (MAE)_: 0.3890596.
 
-```{r calculate Mean Absolute Error, echo=FALSE}
+```{r calculate Mean Absolute Error, include=FALSE}
 mae <- mean(abs(residuals(lm_BCN_Accomm.1)))
 print(mae)
 ```
 
 ### 5.5.10 Evaluation of Model Fit: Observed vs. Fitted Values and Residual Analysis
 
-
-```{r lm_BCN_Accomm.1 obs fit red, echo=FALSE ,fig.width=10, fig.height=6}
+```{r lm_BCN_Accomm.1 obs fit red, include=FALSE}
 
 # 1. Simulate a Random Dataset (if you don't have an actual dataset)
 set.seed(42)  # Ensure reproducibility
@@ -1362,7 +1354,9 @@ lm_BCN_Accomm.1 <- lm(
 
 # Check the model summary
 summary(lm_BCN_Accomm.1)
+```
 
+```{r plots-observedVsfitted, fig.width=10, fig.height=6}
 # 3. Fitted Values and Predictions
 # Generate fitted values
 fitted_values_lm <- fitted(lm_BCN_Accomm.1)
@@ -1387,11 +1381,11 @@ new_data <- data.frame(
 predicted_values <- predict(lm_BCN_Accomm.1, newdata = new_data)
 
 # Check lengths
-if (length(new_data$accommodates) == length(predicted_values)) {
-  print("Lengths match! Ready to plot.")
-} else {
-  stop("Lengths do not match! Check new_data or model predictors.")
-}
+# if (length(new_data$accommodates) == length(predicted_values)) {
+#   print("Lengths match! Ready to plot.")
+# } else {
+#   stop("Lengths do not match! Check new_data or model predictors.")
+# }
 
 # Extract residuals
 residuals_lm <- resid(lm_BCN_Accomm.1)
@@ -1471,10 +1465,9 @@ par(mfrow = c(1, 1))
 
 ### 5.5.11 Can we predict occupancy rates based on factors?
 
-After fitting a Baseline linear model based on EDA variables being _occupancy_rate_30_the response variable and remove predictors might
-not have effect in response varible , model _lm_occupancy.2_ is analysed. 
+After fitting a baseline linear model based on EDA variables being _occupancy_rate_30_ the response variable and remove predictors might not have effect on the response variable , model _lm_occupancy.2_ is analysed. 
 
-```{r baseline-lm , echo=FALSE}
+```{r baseline-lm}
 # Fit the linear model
 lm_occupancy <- lm(occupancy_rate_30 ~ latitude + longitude + bathrooms + bedrooms + 
                      accommodates + beds + price + minimum_nights + 
@@ -1487,12 +1480,12 @@ drop1(lm_occupancy, test="F" )
 tail(capture.output(summary(lm_occupancy)))
 ```
 
-_bathrooms_, _bedrooms_, _accommodates_ , _beds_ , _price_ , _minimum_nights_ , _review_scores_rating_  might have impact on the predictor.
-Very weak impact one level of _neighbourhood on _occupancy_rate_30_
+According to this model, _bathrooms_, _bedrooms_, _accommodates_ , _beds_ , _price_ , _minimum_nights_ , _review_scores_rating_  might have impact on the predictor.
+Very weak impact one level of _neighbourhood_ on _occupancy_rate_30_
 _latitude_, _longitude_ might not have effect on response variable
-So, lets remove these variables form the model
+Considering the performance, we remove these variables form the model.
 
-```{r lm_occupancy.2 , echo=FALSE}
+```{r lm_occupancy.2 , include=FALSE}
 lm_occupancy.2 <-  update(lm_occupancy,
                . ~ .   - latitude -longitude ) 
 
@@ -1500,24 +1493,24 @@ drop1(lm_occupancy.2,test="F")
 tail(capture.output(summary(lm_occupancy)))
 ```
 
-_bathrooms_, _bedrooms_, _accommodates_ , _beds_ , _price_ , _minimum_nights_ , _review_scores_rating_  might have impact on the predictor.
+In the new version, _bathrooms_, _bedrooms_, _accommodates_ , _beds_ , _price_ , _minimum_nights_ , _review_scores_rating_  might have impact on the predictor.
 
-After checking collinearity:There are no GVIF values below 5. The model seems no to have collinear varibles (more details Rscript)
+After checking collinearity there are no GVIF values below 5. The model seems no to have collinear varibles.
 
 ```{r vif lm_occupancy.2, echo=FALSE, results='hide' }
 vif(lm_occupancy.2 )
 ```
 
-There are no GVIF values below 5. The model seems no to have collinearity
-
 **Evaluation model _lm_occupancy.2_**
+
 The model demonstrates low explanatory power based on following metrics.
 RSE: 29. R-Adjusted square and R square are very low. Only approximately around 6% of the variability in occupancy rates is explained by the model.
 
 ### 5.5.12 Comparison of Observed, Fitted, and Predicted Values for the lm_occupancy.2 Model
+
 The following analysis demonstrates the application of a linear model (lm_occupancy.2) to predict occupancy rates for accommodation listings using a simulated dataset. The first plot compares observed and fitted values to evaluate the model's ability to capture the relationship between occupancy rate and key predictors, such as accommodates and price. The second plot visualizes residuals to assess model accuracy and highlight potential discrepancies.
 
-```{r simulate predict fitt obser, echo = FALSE , fig.width=10, fig.height=6}
+```{r simulate predict fitt obser, include = FALSE}
 # 1. Simulate a Random Dataset
 set.seed(42)  # Ensure reproducibility
 dataset <- data.frame(
@@ -1563,7 +1556,9 @@ predicted_values <- predict(lm_occupancy.2, newdata = new_data)
 
 # Extract residuals
 residuals_lm <- resid(lm_occupancy.2)
+```
 
+```{r plotss, fig.width=10, fig.height=6}
 # Select 5 random indices for residual visualization
 set.seed(20)
 selected_ids <- sample(x = 1:nrow(dataset), size = 5)
@@ -1634,21 +1629,22 @@ lines(
 )
 
 par(mfrow = c(1, 1))
-
 ```
+
 
 ## 5.6 Generalised Linear Model with family set to Poisson
 
 ### 5.6.1 Introduction
+
 Generalised Linear Model: Poission is extension of the Linear Model to deal with paritcular types of data: Count data.
 The Poisson Model, assumes a Poisson distribution of the data and uses the natural logarithm as a“link" function.
 
 Therefore, for *GLM:Poission Model* the response variable is: _availability_30_ 
       
-Defining Continous and Categorical variables:
+Defining Continuous and Categorical variables:
 Coming from linear model continuing with the variables and keeping convert categorical variables in factors: host_is_superhost, room_type, property_type.
 
-```{r convert to factors, echo = FALSE, results = 'hide'}
+```{r convert to factors, results = 'hide'}
 # Convert variables to factors 
 BCN_Accomm$host_is_superhost <- as.factor(BCN_Accomm$host_is_superhost)
 BCN_Accomm$room_type <- as.factor(BCN_Accomm$room_type)
@@ -1656,11 +1652,12 @@ BCN_Accomm$property_type <- as.factor(BCN_Accomm$property_type)
 ```
 
 ### 5.6.2 Fitting the model
+
 Based on the data, first graph shows availability by host_is_superhost :This plot shows how availability (availability_30) varies between hosts who are superhosts and those who are not.
 The difference in medians is not significant, indicating that the superhost status may not strongly influence availability.
 The range of availability is slightly larger for the "Non-Superhost" category, suggesting greater variability in this group.
 
-Second graph ilustrates availability by Room Type :This plot compares availability (availability_30) across different room types (entire home/apt, private room, shared room)
+Second graph illustrates availability by Room Type :This plot compares availability (availability_30) across different room types (entire home/apt, private room, shared room).
 
 ```{r echo = FALSE, fig.width=6, fig.height=6}
 # Load required libraries
@@ -1687,10 +1684,7 @@ plot2 <- ggplot(data = BCN_Accomm, aes(x = host_is_superhost, y = availability_3
 (plot1 + plot2) & theme(plot.margin = margin(5, 5, 5, 5))  # Reduce plot margins
 ```
 
-
-After fit poisson model- *glm_basic* and analyzing results, overdispersion is identified;  
-which is a common issue when modeling count data. The overdispersion of this model calculate as deviance / residual 
-is around 9. (All code details in RScript). For solving the overdispersion in Poisson model, Quasipoisson model will be fitted later. 
+After fit poisson model- *glm_basic* and analyzing results, overdispersion is identified; which is a common issue when modeling count data. The overdispersion of this model calculate as deviance / residual is around 9. For solving the overdispersion in Poisson model, Quasipoisson model will be fitted later. 
 
 ```{r glm_basic , echo = FALSE, results = 'hide'}
 glm_basic <- glm(     availability_30 ~ price + host_listings_count +
@@ -1712,7 +1706,7 @@ glm_basic$deviance / glm_basic$df.residual
 However, before fit quasi_Poisson model, *Simulate New Observations*:
  *glm_basic* because _simulate()_ function doesn't directly support quasi-Poisson models.
  
-```{r simulation, echo=FALSE}
+```{r simulation, include=FALSE}
 set.seed(2)
 sim.data.availability_30 <- simulate(glm_basic)
 ##
@@ -1751,10 +1745,9 @@ plot2 <- ggplot(data = BCN_Accomm, aes(x = host_is_superhost, y = availability_3
 (plot1 | plot2) & theme(plot.margin = margin(5, 5, 5, 5))
 ```
 
-
 Fit the Quassipoission Model. Display in some short way due to many levels of _property_type_.
 
-```{r Quassipoisson , echo = FALSE}
+```{r Quassipoisson , include = FALSE}
 glm_quasipoisson <- glm(
                       availability_30 ~ price + host_listings_count +
                       accommodates + minimum_nights + bathrooms +
@@ -1803,7 +1796,7 @@ glm_summary <- capture.output(summary(glm_quasi_updated))
 
 # Print the first and last few lines of the summary
 cat(paste(glm_summary[1:20], collapse = "\n"))  # First 17 lines
-cat("\n...\n")  # Separator for the truncated middle
+# cat("\n...\n")  # Separator for the truncated middle
 cat(paste(tail(glm_summary, 10), collapse = "\n"))  # Last 15 lines
 ```
 
@@ -1819,12 +1812,11 @@ Review Scores Rating: Higher review scores are negatively associated with the re
 Host is Superhost: Being a superhost negatively affects the response variable, indicating that this attribute may not always align with the outcome being measured.
 
 (Further details on the exponential transformed coefficients can be found in the accompanying R script)
-```{r exp coef glm_quasi_updated, Echo=FALSE, results='hide'}
+```{r exp coef glm_quasi_updated, include=FALSE}
 
 exp(coef(glm_quasi_updated))
 
 ```
-
 
 ### 5.6.4 Model Metrics
 
@@ -1933,8 +1925,8 @@ accommodation 1: For the first hypothetical listing, the predicted availability_
 accommodation 2: For the second listing, the predicted availability_30 is approximately 5 days.
 accommodation 3: For the third listing, the predicted availability_30 is approximately 13 days.
 
-
 #### 5.6.7.2 Predict Availability for New Data 
+
 Following, predicted availability values_30days for the first six listings in original dataset (BCN_Accomm), based on the fitted quasi-Poisson model (glm_quasi_updated):
 
 ```{r predicted_availability, Echo=FALSE}
@@ -1953,14 +1945,14 @@ Listing 5: Predicted availability is 4 days.
 Listing 6: Predicted availability is 6 days.
 These predictions are on the response scale (availability_30) and represent the expected availability based on the predictors in the original dataset.
 
-```{r predicted, Echo=FALSE, results='hide'}
+```{r predicted, results='hide'}
 summary(predicted_availability)
 ```
 
 Comparison actual values of availability_30  with the predicted values from model:
 From table above, the predicted values  are systematically higher than actual values for lower availability.
 
-```{r comparison , echo=FALSE}
+```{r comparison}
 actual_availability <- BCN_Accomm$availability_30
 comparison <- data.frame(Actual = actual_availability, Predicted = predicted_availability)
 head(comparison)  # View the first few rows
@@ -2024,7 +2016,6 @@ cat("Root Mean Squared Error (RMSE):", round(rmse), "\n")
 Lower MAE and RMSE generally indicate better accuracy.
 The model's error metrics suggest low accuracy in its predictions. 
 
-
 ## 5.7 Generalised Linear Model for Multinomial data
 
 To explore predictions for price and occupancy rate we can perform GLM for classification models considering the two response variables as multinomial. This approach requires to classify their values into categories.
@@ -2035,35 +2026,37 @@ We want to further explore what are the key factors influencing accommodation pr
 
 To fit a multinomial model it is required to convert the prices in different ranges.
 In this case we divide those into five ordered categories:
+
 - 'very low' >> between 0 and 50 euros,
+
 - 'low' >> between 50 and 150 euros,
+
 - 'medium' between 150 and 300 euros,
+
 - 'high' >> between 300 and 500 euros,
+
 - 'very high' >> between 500 and 1000 euros.
 
-```{r price_ranges, echo = FALSE}
+```{r price_ranges}
 train_normalized_encod$price_cat <- cut(train_normalized$price, 
                        breaks = c(0, 0.05, 0.15, 0.30, 0.5, 1), 
                        labels = c("very low", "low", "medium", "high", "very high"))
-table(train_normalized_encod$price_cat) # check the distribution
+#cat("\nDistribution into Train Set:\n")
+#table(train_normalized_encod$price_cat) # check the distribution
 
 test_normalized_encod$price_cat <- cut(test_normalized$price, 
                        breaks = c(0, 0.05, 0.15, 0.30, 0.5, 1), 
                        labels = c("very low", "low", "medium", "high", "very high"))
-table(test_normalized_encod$price_cat) # check the distribution
+#cat("\nDistribution into Test Set:\n")
+#table(test_normalized_encod$price_cat) # check the distribution
+cat("Price Category Distributions:\n")
+data.frame(
+  Train = table(train_normalized_encod$price_cat),
+  Test = table(test_normalized_encod$price_cat)
+)
 ```
 
-```{r price-distribution, echo = FALSE}
-# check if categories are right skewed - if yes, apply log transformation before fitting the model
-hist(train_normalized_encod$price,
-     main = "Histogram",
-     xlab = "variable",
-     col = "lightblue",
-     border = "black",
-     breaks = 30)
-```
-
-To test what is the probability that a property belongs to a specific price category according to the predictors the generalised linear model is fitted. Since the response variable is ordinal (with an inherent order) the family 'cumulative' with link 'logit' is used. 
+To test what is the probability that a property belongs to a specific price category according to the predictors, a generalized linear model is fitted. Since the response variable is ordinal (with an inherent order) the family 'cumulative' with link 'logit' is used. 
 
 ```{r glm-price, echo = FALSE}
 # multinomial logistic regression model for ordered categories
@@ -2071,12 +2064,12 @@ vglm_model <- vglm(price_cat ~ bathrooms + bedrooms + accommodates + beds +
                      latitude + longitude + review_scores_rating + minimum_nights + room_type + neighbourhood, 
                    family = cumulative(link = "logit", parallel = TRUE), 
                    data = train_normalized_encod)
-summary(vglm_model)
+# summary(vglm_model)
+print(coef(vglm_model))
 ```
 
 The four intercepts in the summary are thresholds (cut-points) for the cumulative probabilities of categories. The coefficients represent the change in the log-odds of being in or below a given category compared to higher categories, for a one-unit increase in the predictor, assuming other predictors remain constant. A negative coefficient indicates the increase of the specific predictor decreases the likelihood of being in a lower price category.
-For example, the coefficient of bathroom equal to -2.35 indicates. Accommodates (the number of admitted guests) shows a highly significant role with a coefficient around -5.67 that means: More accommodates drastically decrease the likelihood of being in a lower price category. This aligns with the fact that a bigger property can become more expensive. Another key factor is the number of minimum nights: a higher number of minimum nights increase the likelihood of being in lower price categories. This would reflect the policy of hosts to set lower prices for longer stays. The neighborhood does not seem to affect the response variable, even if a better model might give another result, as it is known that according to locations prices generally vary.
-In general, predictors like bathrooms, accommodates, latitude, and minimum_nights are strong determinants for the price category.
+This happens, for example, for the coefficients bathrooms, bedrooms, longitude and neighbourhood. Also accommodates shows a highly significant role with a coefficient around -5.67 that means more accommodates drastically decrease the likelihood of being in a lower price category. This aligns with the fact that a bigger property can become more expensive. Another key factor is the number of minimum nights: a higher number of minimum nights increase the likelihood of being in lower price categories. This would reflect the policy of hosts to set lower prices for longer stays. The neighborhood does not seem to affect the response variable, even if a better model might give another result, as it is commonly known that according to locations prices generally vary.
 
 It is now possible to calculate the predicted probabilities for each price category and evaluate how many predictions are correct or incorrect in comparison with the test set.
 
@@ -2095,12 +2088,7 @@ print(confusion_matrix)
 
 According to the confusion matrix, the most correct predictions concern the categories 'very low' and 'low' prices, while for the others categories there is not a good result.
 
-To evaluate the performance of the model we make the following considerations on metrics.
-- RMSE (Root Mean Squared Error) can be used to evaluate the performance of a model, but it's typically used for regression tasks rather than classification tasks. Since we are performing a classification model, RMSE is not the most appropriate metric to assess its performance.
-- MAE (Mean Absolute Error). Since the model is a multinomial classification model (predicting categorical outcomes like different price_grouped levels), the target variable is categorical, not continuous. As a result, MAE is not a suitable metric for this type of model, because MAE operates on the difference between continuous values (actual and predicted).
-- R Squared (R²) is a metric primarily used to evaluate the performance of regression models, not classification models. It indicates how well the independent variables explain the variability in the dependent variable, essentially showing the proportion of variance in the dependent variable that is predictable from the independent variables.
-Instead, we consider the precision and recall.
-- Precision and recall: Measures for each class how often the model correctly identifies a class (precision) or how often the model identifies all true instances of a class (recall).
+To evaluate the performance of the model we consider the precision (measures for each class how often the model correctly identifies a class) and recall (measures for each class how often the model identifies all true instances of a class).
 
 ```{r glm-price-performance-metrics, echo = FALSE}
 # Precision and recall
@@ -2121,10 +2109,10 @@ for (k in 1:ncol(confusion_matrix)) {
 }
 
 # Print Precision and Recall per class
-print("Precision per class:")
-print(precision)
-print("Recall per class:")
-print(recall)
+#print(paste("Precision per class:", precision))
+#print(precision)
+#print(paste("Recall per class:", recall))
+#print(recall)
 
 # Calculate average Precision and Recall
 average_precision <- mean(precision, na.rm = TRUE)
@@ -2134,7 +2122,7 @@ print(paste("Average Precision:", average_precision))
 print(paste("Average Recall:", average_recall))
 ```
 
-The average of precision and recall metrics, considering the three categories of occupancy rate, are respectively around 40% and 34%. It means that there is around 40% chance to get a correct prediction and only 34% of the true instances are correctly identified. In conclusion, the classification model is not performing very well.
+The average of precision and recall metrics are respectively around 40% and 34%. It means that there is around 40% chance to get a correct prediction and only 34% of the true instances are correctly identified. In conclusion, the classification model is not performing well.
 
 ### 5.7.2 Multinomial GLM for occupancy rate prediction
 
@@ -2146,12 +2134,13 @@ train_normalized_encod_glm <- train_normalized_encod
 test_normalized_encod_glm <- test_normalized_encod
 
 quantiles_train <- quantile(train_normalized_encod_glm$occupancy_rate_30, probs = c(0, 1/3, 2/3, 1))
-quantiles_train
+
 train_normalized_encod_glm$occupancy_rate_30 <- cut(train_normalized_encod_glm$occupancy_rate_30,
                                 breaks = quantiles_train, 
                                 labels = c("low", "medium", "high"), 
                                 include.lowest = TRUE)
 
+cat("\nDistribution into Train Set:\n")
 table(train_normalized_encod_glm$occupancy_rate_30_glm) # check the distribution
 
 quantiles_test <- quantile(test_normalized_encod_glm$occupancy_rate_30, probs = c(0, 1/3, 2/3, 1))
@@ -2161,6 +2150,7 @@ test_normalized_encod_glm$occupancy_rate_30 <- cut(test_normalized_encod_glm$occ
                                 labels = c("low", "medium", "high"), 
                                 include.lowest = TRUE)
 
+cat("\nDistribution into Test Set:\n")
 table(test_normalized_encod_glm$occupancy_rate_30) # check the distribution
 ```
 
@@ -2170,7 +2160,8 @@ To test what is the probability that a property has a specific occupancy rate in
 vglm_occupancy <- vglm(occupancy_rate_30 ~ bathrooms + bedrooms + accommodates + beds + latitude + longitude + review_scores_rating + minimum_nights + price + neighbourhood,
                    family = cumulative(link = "logit", parallel = TRUE), 
                    data = train_normalized_encod_glm)
-summary(vglm_occupancy)
+# summary(vglm_occupancy)
+print(coef(vglm_occupancy))
 ```
 
 The summary of the model provides two intercepts that should be interpreted respectively as the threshold (logit) between low and medium/high and low/medium and high. Coefficients with negative sign indicate that as their values increase, the odds of being in a higher category of occupancy rate (medium or high) decrease. This result might align with the fact that the bigger the house, the less probability to be booked in the next 30 days.
@@ -2233,10 +2224,10 @@ for (k in 1:ncol(table_conf_matrix)) {
 }
 
 # Print Precision and Recall per class
-print("Precision per class:")
-print(precision)
-print("Recall per class:")
-print(recall)
+#print(paste("Precision per class:", precision))
+# print(precision)
+#print(paste("Recall per class:", recall))
+# print(recall)
 
 # Calculate average Precision and Recall
 average_precision <- mean(precision, na.rm = TRUE)
@@ -2406,59 +2397,59 @@ A single layer neural network with three hidden nodes is trained, using normaliz
 
 ```{r Fit Neural Network, echo=FALSE, fig.width=10, fig.height=6}
 # Formula
-formula_nn <- price ~ bathrooms + bedrooms + accommodates + beds + 
-                     latitude + longitude + review_scores_rating + minimum_nights
+#formula_nn <- price ~ bathrooms + bedrooms + accommodates + beds + 
+                     #latitude + longitude + review_scores_rating + #minimum_nights
 
 # Train the Neural Network
-nn_price <- neuralnet(formula_nn, 
-                      data = train_normalized, 
-                      hidden = c(3),  
-                      linear.output = TRUE)
+#nn_price <- neuralnet(formula_nn, 
+                      #data = train_normalized, 
+                      #hidden = c(3),  
+                      #linear.output = TRUE)
 
 # Plot 
 # plot(nn_price)
 
 # Summary 
-summary(nn_price)
+#summary(nn_price)
 # plotnet(nn_price)
 ```
 
 ### 5.9.2 Neural Network Model Prediction and Pricing Evaluation
 
-```{r NN_prediction, echo = TRUE, warning = FALSE, message = FALSE, dev='png'}
+```{r NN_prediction, include = FALSE, dev='png'}
 # Ensure relevant columns are numeric
-test_normalized <- test_normalized %>%
-  mutate(across(c("bathrooms", "bedrooms", "accommodates", "beds", 
-                  "latitude", "longitude", "review_scores_rating", 
-                  "minimum_nights"), as.numeric))
+#test_normalized <- test_normalized %>%
+  #mutate(across(c("bathrooms", "bedrooms", "accommodates", "beds", 
+                  #"latitude", "longitude", "review_scores_rating", 
+                  #"minimum_nights"), as.numeric))
 
 # Prediction using the neural network model
-nn_predictions <- compute(nn_price, 
-                          test_normalized[, c("bathrooms", "bedrooms", "accommodates", 
-                                              "beds", "latitude", "longitude", 
-                                              "review_scores_rating", "minimum_nights")])
-
-# Denormalize the predictions
-denormalize <- function(x, original_min, original_max) {
-  x * (original_max - original_min) + original_min
-}
-test$predicted_price <- denormalize(nn_predictions$net.result, 
-                                    min(train$price), 
-                                    max(train$price))
-
-# Create the Observed vs Predicted plot
-nn_plot <- ggplot(test, aes(x = price, y = predicted_price)) +
-  geom_point(alpha = 0.5, color = "blue") + 
-  geom_abline(slope = 1, intercept = 0, color = "red") +
-  labs(title = "Neural Network Model: Observed vs Predicted Prices",
-       x = "Observed Price", y = "Predicted Price") +
-  theme_minimal()
-
-# Save the plot as a PNG file
-ggsave("nn_price_plot.png", plot = nn_plot, width = 8, height = 6)
-
-# Include the saved plot in the knitted document
-knitr::include_graphics("nn_price_plot.png")
+#nn_predictions <- compute(nn_price, 
+                          #test_normalized[, c("bathrooms", "bedrooms", "accommodates", 
+#                                               "beds", "latitude", "longitude", 
+#                                               "review_scores_rating", "minimum_nights")])
+# 
+# # Denormalize the predictions
+# denormalize <- function(x, original_min, original_max) {
+#   x * (original_max - original_min) + original_min
+# }
+# test$predicted_price <- denormalize(nn_predictions$net.result, 
+#                                     min(train$price), 
+#                                     max(train$price))
+# 
+# # Create the Observed vs Predicted plot
+# nn_plot <- ggplot(test, aes(x = price, y = predicted_price)) +
+#   geom_point(alpha = 0.5, color = "blue") + 
+#   geom_abline(slope = 1, intercept = 0, color = "red") +
+#   labs(title = "Neural Network Model: Observed vs Predicted Prices",
+#        x = "Observed Price", y = "Predicted Price") +
+#   theme_minimal()
+# 
+# # Save the plot as a PNG file
+# ggsave("nn_price_plot.png", plot = nn_plot, width = 8, height = 6)
+# 
+# # Include the saved plot in the knitted document
+# knitr::include_graphics("nn_price_plot.png")
 ```
 
 Similar to the GAM model, the plot above shows that the points spread more significantly at higher price ranges, indicating that the neural network model is more accurate when predicting lower prices. This suggests that the model struggles to capture the variability in higher-priced listings, potentially due to outliers. 
@@ -2484,7 +2475,7 @@ The R-squared value is 0.285, meaning that the model explains only the 28.5% of 
 
 The SVR model for Price prediction is a regression model (SVR) since the target variable is numeric. We consider the normalized numerical variables since the model is sensitive to the scale of the features. Moreover, as the response variable presents a skewed distribution we apply a log transformation to optimize it.
 
-```{r}
+```{r histograms-SVM, include=FALSE}
 # check if price are right skewed - if yes, apply log transformation before fitting the model
 hist(train_normalized_encod$price, 
      main = "Histogram of Price", 
@@ -2499,7 +2490,7 @@ train_normalized_encod$log_price <- log(train_normalized_encod$price + 1)
 
 # visualize new distribution with log transform
 hist(train_normalized_encod$log_price, 
-     main = "Histogram of Price", 
+     main = "Histogram of log(Price)", 
      xlab = "Price", 
      col = "lightblue", 
      border = "black", 
@@ -2518,9 +2509,8 @@ set.seed(123)
 # cv_model
 ```
 
-```{r SVM-price-model, echo = FALSE}
+```{r SVM-price-model, echo = TRUE}
 # Train the SVM model
-#SVM_model <- svm(formula_svm, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 10, gamma = 0.1)
 SVM_model <- svm(formula_svm, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 100000, gamma = 0.05)
 summary(SVM_model)
 ```
@@ -2559,7 +2549,7 @@ Eventually, the R-squared value indicates that the model can explain just around
 We perform a the Support Vectors regression model for the Occupancy Rate.
 Similar to the SVR price model, we consider the normalized numerical variables and encode categorical variables into numerical values. Also in this case, we choose a radial kernel since the predictors have mainly non-linear relationships with the response variable. (Disclaimer: the tuning takes very long to be run and it remains commented in the code file for convenience.)
 
-```{r SVM-occupancy, echo = FALSE}
+```{r SVM-occupancy, include=FALSE}
 # check if occupancy rate are right skewed - if yes, apply log transformation before fitting the model
 hist(train_normalized_encod$occupancy_rate_30, 
      main = "Histogram of Occupancy rate", 
@@ -2577,7 +2567,7 @@ set.seed(123)
 # cv_model$best.model
 ```
 
-```{r SVM-occupancy-model, echo = FALSE}
+```{r SVM-occupancy-model, echo = TRUE}
 # Train the SVM model
 SVM_occupancy <- svm(formula_svr_occupancy, data=train_normalized_encod, kernel = 'radial', scale = FALSE, cost = 1000000, gamma = 0.1, type='eps-regression')
 ```
@@ -2630,47 +2620,39 @@ abline(h = 0, col = "red")
 ```
 
 # 6. Use of Generative AI 
-As concerns the use of Generative AI, it supported modelling understanding and coding syntax. In the first case, it has been useful to evaluate what kind of model perform (i.e. whether a classification or regression model would have been more appropriate). However, other references in the literature have been considered to validate the response and to select the metrics for the model evaluation metrics.
-The use of GenAI also helped to speed up the coding activity when testing different solutions or plotting results, as well as understanding synthax errors.
+
+As concerns the use of Generative AI, it supported modelling understanding and coding syntax. In the first case, it has been useful to evaluate what kind of model perform (i.e. whether a classification or regression model would have been more appropriate). The use of GenAI also helped to speed up the coding activity when testing different solutions or plotting results, as well as understanding syntax errors.
 
 It has been a powerful tool for addressing conceptual doubts and clarifying key ideas, providing strong explanatory support. However, obtaining accurate results or aligning AI suggestions with the user’s intent can be challenging. It often requires detailed and precise questions, which can be time-consuming and not always efficient. Furthermore, all AI-generated responses must be carefully validated, as errors can still occur.
 
-# 7. Conclusions (together at the end)
-## 7.1 Summary of key insights - could we answer our questions?
+# 7. Conclusions
 
+## 7.1 Summary of key insights
 
-## 7.2 Predictive Model Performance
-Conclusion Linear Regression Model: _lm_BCN_Accomm.1_ response variable _price_:
-Assuming linear relationships, the model lm_BCN_Accomm.1 was developed based on the selection of variables informed by the results of the analysis. 
-Key variables, such as accommodates and room_type, were identified as having a strong impact on price, as previously discussed.
-According to the metrics, approximately 55% of the variability in the log-transformed price is explained by the predictors included in the model, indicating a moderate explanatory power. The residual standard error (RSE) suggests that the average deviation of observed prices from the predicted values is moderate, reflecting a reasonably good fit for the training data.
-The linear model reasonably captures the relationship between the predictors and log(price), as shown by the general alignment between the fitted and observed values. However, the variability in the residuals indicates that some aspects of the price remain unexplained by the model, suggesting that it may not be very accurate when applied to new data.
+Assuming linear relationships, the linear model for price prediction was developed based on the selection of variables informed by the results of the analysis.Key variables, such as accommodates and room_type, were identified as having a strong impact on price, as previously discussed. According to the metrics, approximately 55% of the variability in the log-transformed price is explained by the predictors included in the model, indicating a moderate explanatory power. 
+In the linear model for occupancy rate prediction, predictors such as price, review_scores_rating has a strong impact on the response variable. But, based on model´s performance metrics, the model demonstrates very low explanatory power.
+Only approximately 6% of the variability in occupancy rates is explained by the model.Therefore, the predictions for new data also yield unsatisfactory results.
 
-Conclusion Linear Regression Model: _lm_occupancy.2_ response variable : _occupancy_rate_30_
-In this model predictors such as price, review_scores_rating has a strong impact on the response variable.
-But, based on model´s performance metrics, the model demonstrates very low explanatory power.
-Only approximately 6% of the variability in occupancy rates is explained by the model. R-Adjusted square and R square are very low. RSE(29)
-Therefore, the predictions for new data also yield unsatisfactory results.
-
-Conclusion Poisson Model: _glm_quasi_updated_
-The model identifies notable relationships, particularly between accommodation types, accommodates, number of reviews on response variable availability_30.
+As regards the generalized linear model with Poisson distribution, the model identifies notable relationships, particularly between accommodation types, accommodates, number of reviews on response variable availability_30.
 However, based on the model´s performance metrics the model has very low explanatory power, not even 7%.
-In addition, the model's error metrics suggest very low accuracy in its predictions. (MAE, RMSE)
+In addition, the model's error metrics suggest very low accuracy in its predictions.
 
-
-
-...... models sum-up
 The generalized linear models for multinational variables gave accuracy, for both price and occupancy rate categories predictions, less than 50% that cannot be representative of good performance. However, the evaluation of the coefficients explained that bathrooms, accommodates, latitude, and minimum_nights are strong determinants for the price category, while and the main influence of bathrooms, beds, bedrooms, accommodates, and minimum number have effect on the occupancy rate model.
+
+In the Generalized Additive model for the price prediction did not perform well, explaining only approx. 34% of the variable's variance, while the same model for occupancy rate gave an explanation of less than 5%, probably due to the influence of outliers.
+
 Support Vector Regression model provided also not satisfactory results for the price prediction and did not performed for the occupancy rate prediction.
-## 7.3 Implications
+
+As concerns the Neural Network model for price prediction, the model performed only for the 28% of the variable's variance, while for the occupancy rate it was not possible to perform a model.
+
 ## 7.4 Limitations
+
 The low performance of the different models could be imposed by the data distribution and the presence of outliers that might influence irremediably some of the models.
+
 ## 7.5 Future work
+
 Further achievements can be obtained with a more in-depth analysis of data and a more selective approach toward the variables. 
 
-# 8. References 
-- website
-- literature
 
 
 
