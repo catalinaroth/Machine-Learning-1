@@ -964,11 +964,9 @@ pairs(~ occupancy_rate_30 + price + room_type + property_type + neighbourhood , 
 
 ### 5.5.1 Introduction to Linear Models
 
-To answer the question **1 What are the key factors influencing accommodation prices in Barcelona?** the response variable in the model is the *price* of accommodation in Barcelona. Through fitting the linear model and analyzing the linear effects among response variable and predictors, identifying which predictors might have impact in the price and interpretations.
+To answer the question **What are the key factors influencing accommodation prices in Barcelona?** the response variable in the model is the *price* of accommodation in Barcelona. Through fitting the linear model and analyzing the linear effects among response variable and predictors, identifying which predictors might have impact in the price and interpretations.
 
 For brevity, only the most relevant steps for fitting the model are included in the report for understanding. Further details can be found in the accompanying R script. 
-
-To answer the question **2 Can we predict occupancy rates based on location, amenities, or other factors?** the baseline linear model is fitted with variables according to EDA and being analysis. The response variable the calculate variable: *occupancy_rate_30*
 
 ```{r convert to numeric}
 #Convert to a numeric variable
@@ -1417,168 +1415,6 @@ lines(
 par(mfrow = c(1, 1))
 ```
 
-### 5.5.11 Can we predict occupancy rates based on factors?
-
-After fitting a baseline linear model _occupancy_rate_30_  as response variable, based on EDA variables, and being removed predictors might not have effect on the response variable , model _lm_occupancy.2_ is analysed. 
-
-```{r baseline-lm}
-# Fit the linear model
-lm_occupancy <- lm(occupancy_rate_30 ~ latitude + longitude + bathrooms + bedrooms + 
-                     accommodates + beds + price + minimum_nights + 
-                     review_scores_rating + neighbourhood, 
-                   data = BCN_Accomm)
-
-# Summary of the model
-drop1(lm_occupancy, test="F" )
-
-tail(capture.output(summary(lm_occupancy)))
-```
-
-According to this model, _bathrooms_, _bedrooms_, _accommodates_ , _beds_ , _price_ , _minimum_nights_ , _review_scores_rating_  might have impact on the predictor.
-Very weak impact one level of _neighbourhood_ on _occupancy_rate_30_
-_latitude_, _longitude_ might not have effect on response variable. Considering the performance, we remove these variables form the model.
-
-```{r lm_occupancy.2 , include=FALSE}
-lm_occupancy.2 <-  update(lm_occupancy,
-               . ~ .   - latitude -longitude ) 
-
-drop1(lm_occupancy.2,test="F")
-tail(capture.output(summary(lm_occupancy)))
-```
-
-In the new version, _bathrooms_, _bedrooms_, _accommodates_ , _beds_ , _price_ , _minimum_nights_ , _review_scores_rating_  might have impact on the occupancy rate.
-The model does not indicate any issues of collinearity among the variables.
-
-```{r vif lm_occupancy.2, echo=FALSE, results='hide' }
-vif(lm_occupancy.2 )
-```
-
-**Evaluation model _lm_occupancy.2_**
-The model demonstrates low explanatory power based on following metrics.Only approximately around 6% of the variability in occupancy rates is explained by the model. RSE: 29. R-Adjusted square and R square are very low. 
-
-### 5.5.12 Comparison of Observed, Fitted, and Predicted Values for the lm_occupancy.2 Model
-
-```{r simulate predict fitt obser, include = FALSE}
-# 1. Simulate a Random Dataset
-set.seed(42)  # Ensure reproducibility
-dataset <- data.frame(
-  bathrooms = rnorm(100, mean = 2, sd = 0.5),
-  bedrooms = rnorm(100, mean = 3, sd = 1),
-  accommodates = sample(1:10, 100, replace = TRUE),
-  beds = rnorm(100, mean = 3, sd = 0.8),
-  price = rnorm(100, mean = 150, sd = 50),
-  minimum_nights = sample(1:30, 100, replace = TRUE),
-  review_scores_rating = rnorm(100, mean = 85, sd = 10),
-  neighbourhood = factor(sample(c("Eixample", "Gracia", "Sants"), 100, replace = TRUE)),
-  occupancy_rate_30 = rnorm(100, mean = 60, sd = 10)
-)
-
-# 2. Fit the Model
-lm_occupancy.2 <- lm(
-  occupancy_rate_30 ~ bathrooms + bedrooms + accommodates + beds +
-    price + minimum_nights + review_scores_rating + neighbourhood,
-  data = dataset
-)
-
-# Check the model summary
-summary(lm_occupancy.2)
-
-# 3. Fitted Values and Predictions
-# Fitted values
-fitted_values_lm <- fitted(lm_occupancy.2)
-
-# Create new data for prediction
-new_data <- data.frame(
-  bathrooms = mean(dataset$bathrooms, na.rm = TRUE),
-  bedrooms = mean(dataset$bedrooms, na.rm = TRUE),
-  accommodates = seq(min(dataset$accommodates), max(dataset$accommodates), length.out = 100),
-  beds = mean(dataset$beds, na.rm = TRUE),
-  price = mean(dataset$price, na.rm = TRUE),
-  minimum_nights = mean(dataset$minimum_nights, na.rm = TRUE),
-  review_scores_rating = mean(dataset$review_scores_rating, na.rm = TRUE),
-  neighbourhood = factor("Eixample", levels = levels(dataset$neighbourhood)) # Adjust to an existing level
-)
-
-# Predict fitted values for the new dataset
-predicted_values <- predict(lm_occupancy.2, newdata = new_data)
-
-# Extract residuals
-residuals_lm <- resid(lm_occupancy.2)
-```
-
-```{r plotss, fig.width=10, fig.height=6}
-# Select 5 random indices for residual visualization
-set.seed(20)
-selected_ids <- sample(x = 1:nrow(dataset), size = 5)
-
-# 4. Visualization: Two Plots in One Page
-par(mfrow = c(1, 2))  # Divide plotting area into 1 row, 2 columns
-
-# First Plot: Observed vs. Fitted
-plot(
-  occupancy_rate_30 ~ accommodates,
-  data = dataset,
-  main = "Model 'lm_occupancy.2': Observed vs Fitted",
-  col = "darkgray",
-  pch = 16,
-  xlab = "Accommodates",
-  ylab = "Occupancy Rate (30)"
-)
-
-# Add fitted values as points
-points(
-  dataset$accommodates, fitted_values_lm,
-  col = "purple",
-  pch = 19
-)
-
-# Add the regression line for accommodates
-lines(new_data$accommodates, predicted_values, col = "blue", lwd = 2)
-
-# Second Plot: Residuals Visualization
-plot(
-  occupancy_rate_30 ~ accommodates, 
-  data = dataset, 
-  main = "Residual Visualization (lm_occupancy.2)", 
-  col = "lightgray",
-  xlab = "Accommodates",
-  ylab = "Occupancy Rate (30)"
-)
-
-# Overlay the predicted (fitted) values for all data points
-points(
-  dataset$accommodates, fitted_values_lm, 
-  col = "purple", 
-  pch = 19
-)
-
-# Add the actual observed points for the selected indices
-points(
-  occupancy_rate_30 ~ accommodates, 
-  data = dataset[selected_ids, ], 
-  col = "red", 
-  pch = 19
-)
-
-# Add the residual segments for the selected points
-segments(
-  x0 = dataset[selected_ids, "accommodates"],
-  x1 = dataset[selected_ids, "accommodates"],
-  y0 = fitted_values_lm[selected_ids],
-  y1 = dataset[selected_ids, "occupancy_rate_30"],
-  col = "blue"
-)
-
-# Add a smoothing line to visualize the trend of fitted values
-lines(
-  lowess(dataset$accommodates, fitted_values_lm), 
-  col = "black", 
-  lwd = 2
-)
-
-par(mfrow = c(1, 1))
-```
-
 
 ## 5.6 Generalised Linear Model with family set to Poisson
 
@@ -1797,7 +1633,7 @@ glht.room_types<- glht(glm_quasi_updated,
 summary(glht.room_types)
 ```
 
-Privacy vs. Shared Accommodation: Private accommodations (Entire home/apt and Private room combined) show significantly lower availability compared to shared accommodations (Shared room).
+Privacy vs. Shared Accommodation: Private accommodations (Entire home/apt and Private room combined) show significantly lower availability compared to shared accommodations (Shared room). 
 Private Room vs. Shared Room: Private rooms also have lower availability than shared rooms.
 Overall, accommodation type significantly impacts availability, with greater privacy associated with lower availability.
 
@@ -1875,7 +1711,7 @@ hist(predicted_availability, main = "Distribution of Predicted Availability",
 ```
 
 *Evaluation of the prediction*
-a) Residual analysis 
+Residual analysis 
 
 ```{r histogram Residual analysis , fig.width=4, fig.height=3, echo=FALSE}
 # Calculate residuals
@@ -2532,12 +2368,9 @@ It has been a powerful tool for addressing conceptual doubts and clarifying key 
 
 ## 7.1 Summary of key insights
 
-Assuming linear relationships, the linear model for price prediction was developed based on the selection of variables informed by the results of the analysis.Key variables, such as accommodates and room_type, were identified as having a strong impact on price, as previously discussed. According to the metrics, approximately 55% of the variability in the log-transformed price is explained by the predictors included in the model, indicating a moderate explanatory power. 
-In the linear model for occupancy rate prediction, predictors such as price, review_scores_rating has a strong impact on the response variable. But, based on model´s performance metrics, the model demonstrates very low explanatory power.
-Only approximately 6% of the variability in occupancy rates is explained by the model.Therefore, the predictions for new data also yield unsatisfactory results.
+Assuming linear relationships, the linear model for price prediction was developed based on the selection of variables informed by the results of the analysis.Key variables, such as accommodates and room_type, were identified as having a strong impact on price, as previously discussed. According to the metrics, approximately 55% of the variability in the log-transformed price is explained by the predictors included in the model, indicating a moderate explanatory power. The model is reasonably useful for capturing important patterns in the data, although there is scope for improving its accuracy.
 
-As regards the generalized linear model with Poisson distribution, the model identifies notable relationships, particularly between accommodation types, accommodates, number of reviews on response variable availability_30.
-However, based on the model´s performance metrics the model has very low explanatory power, not even 7%.
+As regards the generalized linear model with Poisson distribution, the model identifies notable relationships, particularly between accommodation types, accommodates, number of reviews on response variable availability_30. However, based on the model´s performance metrics the model has very low explanatory power, not even 7%.
 In addition, the model's error metrics suggest very low accuracy in its predictions.
 
 The generalized linear models for multinational variables gave accuracy, for both price and occupancy rate categories predictions, less than 50% that cannot be representative of good performance. However, the evaluation of the coefficients explained that bathrooms, accommodates, latitude, and minimum_nights are strong determinants for the price category, while and the main influence of bathrooms, beds, bedrooms, accommodates, and minimum number have effect on the occupancy rate model.
