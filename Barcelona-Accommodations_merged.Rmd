@@ -964,15 +964,11 @@ pairs(~ occupancy_rate_30 + price + room_type + property_type + neighbourhood , 
 
 ### 5.5.1 Introduction to Linear Models
 
-In Linear model, the response variable is a continuous variable that is assumed to follow a normal distribution. 
-To answer the question **1 What are the key factors influencing accommodation prices in Barcelona?** the response variable in the model is the *price* of accommodation in Barcelona. Through fitting the linear model and analyzing the linear relations among response variable and predictors  to identify which predictors might have effect in the price and interpretations.
+To answer the question **1 What are the key factors influencing accommodation prices in Barcelona?** the response variable in the model is the *price* of accommodation in Barcelona. Through fitting the linear model and analyzing the linear effects among response variable and predictors, identifying which predictors might have impact in the price and interpretations.
 
-Specifications.
-Analysis of chosen variables, relation among variables and correlation will be study directly with the model.
-For this model variable availability_30 treat as numeric.
+For brevity, only the most relevant steps for fitting the model are included in the report for understanding. Further details can be found in the accompanying R script. 
 
-To answer the question **2 Can we predict occupancy rates based on location, amenities, or other factors?** the baseline linear model is fitted with variables according to EDA and being analysis. The response variable the 
-calculate variable: *occupancy_rate_30*
+To answer the question **2 Can we predict occupancy rates based on location, amenities, or other factors?** the baseline linear model is fitted with variables according to EDA and being analysis. The response variable the calculate variable: *occupancy_rate_30*
 
 ```{r convert to numeric}
 #Convert to a numeric variable
@@ -1031,10 +1027,9 @@ boxplot(log(BCN_Accomm$price),
 par(mfrow = c(1, 1))
 ```
 
-As observed in the boxplot, the log transformation reduces the skewness of the price distribution, resulting more symmetrical distribution.
-The boxplot of price shows highly skewed distribution, whereas the boxplot after the log transformation compresses the range and reduces the impact of extreme values. The resulting distribution appears more symmetrical, which is desirable for linear regression, as it can improve model robustness and provide a better fit.
+The log transformation reduces skewness in the price distribution, making it more symmetrical. This is evident in the boxplot, where the original price shows a highly skewed distribution, but after the log transformation, the range is compressed, and the influence of extreme values is minimized. A more symmetrical distribution is beneficial for linear regression as it improves model robustness and fit.
 
-The following boxplot visualizes the relationship between the number of guests (accommodates) and the log-transformed price. This helps to identify how the price distribution varies across different accommodation capacities
+The following boxplot visualizes the relationship between the number of guests (accommodates) and the log-transformed price.
 
 ```{r boxplot log price accomodates, fig.width=8, fig.height=3}
 options(repr.plot.width = 6, repr.plot.height = 4)
@@ -1044,9 +1039,9 @@ boxplot(log(price) ~ accommodates, data = BCN_Accomm,
         ylab = "Log(Price)")
 ```
 
-We check the performance of the model with transformed log transformation for the response variable price (the code is omitted in this output).
+The performance of the model with transformed log for the response variable price (as a step model the code and result is not display. More details RScript).
 
-```{r lm log}
+```{r lm log, echo=FALSE, results='hide'}
 lm.BCN_Accomm.total_num.transf<- lm(log(price) ~ host_listings_count+ latitude + longitude + accommodates + bathrooms 
                                 + bedrooms + beds + minimum_nights + availability_30  + availability_60 +
                                   availability_90+ review_scores_rating + availability_365+ number_of_reviews_ltm, 
@@ -1060,13 +1055,13 @@ They will be removed from the model.
 
 ### 5.5.3 Collineraty
 
-After inspecting the correlation of bedrooms with other similar variables, reveals certain degree of redundancy, as these variables likely capture similar information about accommodation capacity. 
+After inspecting the correlation of bedrooms with other similar variables, reveals certain degree of redundancy, as these variables likely capture similar information about accommodation capacity. (Results Correlation Matrix and Vif function in Rscript )
 
-```{r cor, include=FALSE}
+```{r cor, echo=FALSE, results='hide'}
 cor(BCN_Accomm[c("bathrooms", "accommodates", "beds", "bedrooms")])
 ```
 
-```{r vif BCN_Accomm.total_num.transf, include=FALSE}
+```{r vif BCN_Accomm.total_num.transf, echo=FALSE, results='hide'}
 vif(lm.BCN_Accomm.total_num.transf)
 ```
 
@@ -1097,10 +1092,7 @@ This linear model _lm.BCN_Accomm.total_num.0_ will be used to merger with catego
 
 Some briefly reasons about the categorical variables included or not in the linear model (besides EDA reasons):
 
-_X_, _id_, _host_id_ as identifying variables, they will not be considered relevant predictors.
-_Zipcode_ gives information about location. Zipcode was excluded as latitude and longitude provide more precise localization information, making zipcode redundant. However, neighbourhood will be include iniatially. (EDA reasons)
-
-Regarding original layout of _amenities_ in the dataset for being directly treated as factor is too complex.  
+_X_, _id_, _host_id_ as identifying variables, they will not be considered relevant predictors. _Zipcode_ gives information about location. Zipcode was excluded as latitude and longitude provide more precise localization information, making zipcode redundant. However, neighbourhood will be include iniatially (EDA reasons). Regarding original layout of _amenities_ in the dataset for being directly treated as factor is too complex.  
 
 ```{r amenities level, results='hide'}
 num_unique_amenities <- length(unique(BCN_Accomm$amenities))
@@ -1256,12 +1248,7 @@ drop1(lm_BCN_Accomm.int, test="F")
 tail(capture.output(summary(lm_BCN_Accomm.int)))    
 ```
 
-Comparing with the model _lm_BCN_Accomm.1_ the difference in adjusted R squared is almost minimal, suggesting that the interactions terms add very little explanatory power to the model.The difference RSE is very short comparing with the model with interactions, which indicates a marginal improvement. 
-These results suggest that these interaction terms have a meaningful impact on the response variable, even though their contribution to the overall model fit is small.
-The improvement from adding interactions might not justify the additional complexity.
-
-Any new trial combinations results improve significantly the results getting.
-Therefore _lm_BCN_Accomm.1_ conclude as proposal linear model under all this reasons shows during the fitting.
+The comparison with model _lm_BCN_Accomm.1_ shows minimal differences in adjusted R-squared and RSE, indicating that interaction terms provide little additional explanatory power. While they have some impact on the response variable, their contribution to the overall model fit is negligible and does not justify the added complexity. No further trial combinations significantly improve the results, confirming _lm_BCN_Accomm.1_ as the proposed linear model.
 
 ### 5.5.8 Interpretation Final Linear model _lm_BCN_Accomm.1_ 
 
@@ -1271,11 +1258,6 @@ drop1(lm_BCN_Accomm.1, test="F")
 tail(capture.output(summary(lm_BCN_Accomm.1)))
 ```
 
-Based on the results, the variables with the most significant effects on the log-transformed price, as indicated by the F-values and p-values, arethe following. _Accommodates_: is the strongest predictor, with an extremely high F-value, reflecting its critical role in determining pricing; _room_type_: also highly significant, this variable captures substantial differences in pricing between types of accommodations, such as entire homes, private rooms, and shared rooms; _availability_30_; _minimum_nights_; _latitude_ and _longitude_; _host_is_superhost_.
-
-Other variables, such as _property_type_, _bathrooms_, and _number_of_reviews_ltm_, also contribute to the model, though their effects are relatively smaller. Meanwhile, variables like _review_scores_rating_ seems not to have impact on pricing.
-
-The adjusted R-squared for this model is approximately 0.55, indicating that about 55% of the variability in the log-transformed price is explained by the predictors included in the model. The residual standard error (RSE) suggests that the average deviation of observed prices from the predicted values is moderate, reflecting a reasonably good fit.
 
 ```{r coefficients_lm, include = FALSE}
 summary(lm_BCN_Accomm.1)
@@ -1288,28 +1270,23 @@ coefficients_lm <- coef(lm_BCN_Accomm.1)
 coefficients_transformed_lm <- exp(coefficients_lm)
 ```
 
-Based on the coefficient calculations, several predictors stand out as highly relevant in explaining the variability in log-transformed accommodation prices.
+Main Significant Predictors:
+_Accommodates_: The strongest predictor, with a significant positive impact on price; higher capacity leads to higher prices. _Room Type_: Private rooms are priced lower than entire homes, and shared rooms have the lowest prices. _Location (Latitude and Longitude)_: Latitude has a negative effect, while longitude has a positive effect, indicating spatial pricing trends. _Availability (30 days)_: Positively associated with higher prices. _Host_is_superhost_ : Being a superhost increases prices._Minimum Nights_: Longer minimum stays slightly reduce prices._Property Type_: Certain unique types, such as boutique hotels, have higher prices, while others, like guesthouses, tend to have lower prices.
 
-Accommodates: This variable has a strong positive relationship with price, indicating that properties designed to host more guests are generally priced higher. 
-Room Type: The type of room plays a crucial role in pricing. Private rooms tend to be priced lower than entire homes, while shared rooms show an even more significant reduction in price.
-Location (Latitude and Longitude): These variables capture spatial pricing trends, emphasizing the importance of location.
-Latitude has a negative impact and longitude has a positive effect, with prices increasing as one moves east.
-Availability (30 days): Short-term availability has a notable positive effect on pricing.
-Host_is_superhost: Being a superhost positively impacts prices.
-Minimum Nights: Properties requiring longer minimum stays tend to have slightly lower prices.
-Property Type: Boutique hotels and certain unique property types exhibit higher pricing, while other property types, such as guesthouses, show lower price levels.
-While the coefficients in the model are calculated in log-transformed terms, they can be interpreted in their original scale by applying an exponential transformation. 
+Other Predictors: Variables such as _property_type_, _bathrooms_, and _number_of_reviews_ltm_ have smaller effects, while _review_scores_rating _ seems to have no impact on price.
+
+Coefficient Interpretation:The exponentially transformed coefficients allow for interpreting the predictors' impact on the original price scale.
 
 ### 5.5.9 Evaluation Linear model _lm_BCN_Accomm.1_ 
 
 _R² (R Squared)_:  (from the summary).
-Meaning: The model explains approximately 55% of the variance in the log(price) variable.
+Meaning: The model explains approximately 55% of the variability in the log-transformed price
 
 _Adjusted R²:Value_:  (from summary around 0.55)
 Meaning: Adjusted R² accounts for the number of predictors in the model, providing a more realistic measure when comparing models with different numbers of predictors.
 
 _Residual Standard Error (RSE)_:
-Value: 0.52 aprox. Meaning: On average, the residuals deviate by about 0.52 units from the predicted values of log(price). This is a measure of the model's overall error.
+Value: 0.52 aprox. Meaning: On average, the residuals deviate by about 0.52 units from the predicted values of log(price).
 
 _Mean Absolute Error (MAE)_: 0.3890596.
 
@@ -1465,7 +1442,7 @@ par(mfrow = c(1, 1))
 
 ### 5.5.11 Can we predict occupancy rates based on factors?
 
-After fitting a baseline linear model based on EDA variables being _occupancy_rate_30_ the response variable and remove predictors might not have effect on the response variable , model _lm_occupancy.2_ is analysed. 
+After fitting a baseline linear model _occupancy_rate_30_  as response variable, based on EDA variables, and being removed predictors might not have effect on the response variable , model _lm_occupancy.2_ is analysed. 
 
 ```{r baseline-lm}
 # Fit the linear model
@@ -1495,20 +1472,16 @@ tail(capture.output(summary(lm_occupancy)))
 
 In the new version, _bathrooms_, _bedrooms_, _accommodates_ , _beds_ , _price_ , _minimum_nights_ , _review_scores_rating_  might have impact on the predictor.
 
-After checking collinearity there are no GVIF values below 5. The model seems no to have collinear varibles.
+No collinearity after check it.
 
 ```{r vif lm_occupancy.2, echo=FALSE, results='hide' }
 vif(lm_occupancy.2 )
 ```
 
 **Evaluation model _lm_occupancy.2_**
-
-The model demonstrates low explanatory power based on following metrics.
-RSE: 29. R-Adjusted square and R square are very low. Only approximately around 6% of the variability in occupancy rates is explained by the model.
+The model demonstrates low explanatory power based on following metrics.Only approximately around 6% of the variability in occupancy rates is explained by the model. RSE: 29. R-Adjusted square and R square are very low. 
 
 ### 5.5.12 Comparison of Observed, Fitted, and Predicted Values for the lm_occupancy.2 Model
-
-The following analysis demonstrates the application of a linear model (lm_occupancy.2) to predict occupancy rates for accommodation listings using a simulated dataset. The first plot compares observed and fitted values to evaluate the model's ability to capture the relationship between occupancy rate and key predictors, such as accommodates and price. The second plot visualizes residuals to assess model accuracy and highlight potential discrepancies.
 
 ```{r simulate predict fitt obser, include = FALSE}
 # 1. Simulate a Random Dataset
@@ -1636,10 +1609,7 @@ par(mfrow = c(1, 1))
 
 ### 5.6.1 Introduction
 
-Generalised Linear Model: Poission is extension of the Linear Model to deal with paritcular types of data: Count data.
-The Poisson Model, assumes a Poisson distribution of the data and uses the natural logarithm as a“link" function.
-
-Therefore, for *GLM:Poission Model* the response variable is: _availability_30_ 
+Generalised Linear Model: Poission is extension of the Linear Model to deal with paritcular types of data: Count data. Therefore, for *GLM:Poission Model* the response variable is: _availability_30_ 
       
 Defining Continuous and Categorical variables:
 Coming from linear model continuing with the variables and keeping convert categorical variables in factors: host_is_superhost, room_type, property_type.
@@ -1653,13 +1623,10 @@ BCN_Accomm$property_type <- as.factor(BCN_Accomm$property_type)
 
 ### 5.6.2 Fitting the model
 
-Based on the data, first graph shows availability by host_is_superhost :This plot shows how availability (availability_30) varies between hosts who are superhosts and those who are not.
-The difference in medians is not significant, indicating that the superhost status may not strongly influence availability.
-The range of availability is slightly larger for the "Non-Superhost" category, suggesting greater variability in this group.
+The first graph examines availability (availability_30) by superhost status, showing no significant difference in medians between superhosts and non-superhosts. However, the range of availability is slightly larger for non-superhosts, indicating greater variability in this group.
+The second graph compares availability by room type, illustrating differences across categories (entire home/apt, private room, shared room).
 
-Second graph illustrates availability by Room Type :This plot compares availability (availability_30) across different room types (entire home/apt, private room, shared room).
-
-```{r echo = FALSE, fig.width=6, fig.height=6}
+```{r echo = FALSE, fig.width=6, fig.height=5}
 # Load required libraries
 library(ggplot2)
 library(patchwork)
@@ -1684,7 +1651,7 @@ plot2 <- ggplot(data = BCN_Accomm, aes(x = host_is_superhost, y = availability_3
 (plot1 + plot2) & theme(plot.margin = margin(5, 5, 5, 5))  # Reduce plot margins
 ```
 
-After fit poisson model- *glm_basic* and analyzing results, overdispersion is identified; which is a common issue when modeling count data. The overdispersion of this model calculate as deviance / residual is around 9. For solving the overdispersion in Poisson model, Quasipoisson model will be fitted later. 
+After fit poisson model- *glm_basic* and analyzing results, overdispersion is identified; which is a common issue when modeling count data (RScript). For solving the overdispersion in Poisson model, Quasipoisson model will be fitted later. 
 
 ```{r glm_basic , echo = FALSE, results = 'hide'}
 glm_basic <- glm(     availability_30 ~ price + host_listings_count +
@@ -1721,7 +1688,7 @@ Based on simulation (Poisson simulation), first graph shows simulated _availabil
 Second graph, shows the simulated _availability_30_ for each _room type_. The simulated data trends align well with the observed data: shared rooms have consistently lower availability, while entire apartments show greater variability. 
 similarity between observed data and simulated distributions *suggest that Poisson model is capturing main patterns*.
 
-```{r graphs_simulated, echo = FALSE, fig.width=6, fig.height=6}
+```{r graphs_simulated, echo = FALSE, fig.width=6, fig.height=5}
 library(ggplot2)
 library(patchwork)
 
@@ -1766,9 +1733,7 @@ tail(capture.output(summary(glm_quasipoisson)))
 
 Some predictors, as _host_listings_count_ seems not to have impact in response variable. The rest variables seem to have an effect in the response variable.
 Several levels of factor _property_type_  seems not to have effect in availability_30.
-
-Therefore, lets check if property_type overall has effect in response variable using anova(). Fit a model without this factor and 
-compare.
+Therefore, lets check if property_type overall has effect in response variable using anova(). Fit a model without this factor and compare with anova.
 
 ```{r anova , echo = FALSE}
 #model without property_type.fact (model 2)
@@ -1777,9 +1742,7 @@ glm_quasi_no_property <- update (glm_quasipoisson, . ~ . - property_type)
 anova(glm_quasipoisson, glm_quasi_no_property, test = "F")
 ```
 
-Model 1: *glm_quasipoisson* provides a significantly better explanation of the variability in availability_30.
-The variable _property_type_group_ seems to have relevant role in the model. Therefore, not  remove property_type from the model.
-
+Model 1: *glm_quasipoisson* provides a significantly better explanation of the variability in availability_30.The variable _property_type_group_ seems to have relevant role in the model. Therefore, not  remove property_type from the model.
 Next step, refit the model removing variables might have not impact on response variable.
 
 ### 5.6.3 quasiPoisson glm_quasi_updated Model: Interpretation and coefficients
@@ -1801,17 +1764,17 @@ cat(paste(tail(glm_summary, 10), collapse = "\n"))  # Last 15 lines
 ```
 
 Positive Relationship:
-Bathrooms: An increase in the number of bathrooms has a strong positive effect on the response variable.
-Room Type (Private Room): Properties categorized as "Private Room" positively influence the response variable compared to the reference level category.
-Room Type (Shared Room): Properties as "Shared Room" have an even stronger positive impact compared with reference level.
-Minimum Nights: A longer minimum stay requirement also has a positive association with the response variable, though the effect is smaller.
+_Bathrooms_: An increase in the number of bathrooms has a strong positive effect on the response variable.
+_Room Type (Private Room)_: Properties categorized as "Private Room" positively influence the response variable compared to the reference level category.
+_Room Type (Shared Room)_: Properties as "Shared Room" have an even stronger positive impact compared with reference level.
+_Minimum Nights_: A longer minimum stay requirement also has a positive association with the response variable, though the effect is smaller.
 
 Negative Relationship:
-Number of Reviews (Last Month): An increase in the number of recent reviews has a significant negative effect on the response variable.
-Review Scores Rating: Higher review scores are negatively associated with the response variable, though the effect is more subtle.
-Host is Superhost: Being a superhost negatively affects the response variable, indicating that this attribute may not always align with the outcome being measured.
+_Number of Reviews (Last Month)_: An increase in the number of recent reviews has a significant negative effect on the response variable.
+_Review Scores Rating_: Higher review scores are negatively associated with the response variable, though the effect is more subtle.
+_Host is Superhost_: Being a superhost negatively affects the response variable, indicating that this attribute may not always align with the outcome being measured.
 
-(Further details on the exponential transformed coefficients can be found in the accompanying R script)
+(Further details on the exponential transformed coefficients can be found in RScript)
 ```{r exp coef glm_quasi_updated, include=FALSE}
 
 exp(coef(glm_quasi_updated))
@@ -1891,15 +1854,7 @@ This reflects that listings with many reviews are more popular and tend to be bo
 
 ### 5.6.7 Predictions model *glm_quasi_updated*
 
-#### 5.6.7.1 Predict Availability for New Data 
-
-The aim is to know the days of the response variable for a 3 concrete accommodations using predict() function. 
-
-Accommodation 1: Minimum Nights: 3, Bathrooms: 1, Reviews: 20, Rating: 90, Superhost: No, Room Type: Private Room, Property Type: Apartment
-Accommodation 2: Minimum Nights: 5, Bathrooms: 2, Reviews: 50, Rating: 95, Superhost: No, Room Type: Entire Home/Apt, Property Type: House
-Accommodation 3: Minimum Nights: 7, Bathrooms: 3, Reviews: 100, Rating: 85, Superhost: Yes, Room Type: Shared Room, Property Type: Boat
-
-```{r predictions new data , echo=FALSE, error= TRUE}
+```{r predictions new data , echo=FALSE,  eval=FALSE}
 # Create a new dataset with the selected variables
 new_data <- data.frame(
   minimum_nights = c(3, 5, 7),             # Example minimum stays
@@ -1919,14 +1874,6 @@ predicted_availability <- predict(glm_quasi_updated, newdata = new_data, type = 
 round(predicted_availability, digits = 0)
 ```
 
-Interpretation of Predictions:
-
-accommodation 1: For the first hypothetical listing, the predicted availability_30 is approximately 8 days.
-accommodation 2: For the second listing, the predicted availability_30 is approximately 5 days.
-accommodation 3: For the third listing, the predicted availability_30 is approximately 13 days.
-
-#### 5.6.7.2 Predict Availability for New Data 
-
 Following, predicted availability values_30days for the first six listings in original dataset (BCN_Accomm), based on the fitted quasi-Poisson model (glm_quasi_updated):
 
 ```{r predicted_availability, Echo=FALSE}
@@ -1935,14 +1882,6 @@ predicted_availability <- round(predict(glm_quasi_updated, type = "response"), d
 head(predicted_availability)  # View the first few predictions
 ```
 
-Interpretation:
-
-Listing 1: Predicted availability is 8 days.
-Listing 2: Predicted availability is 9 days.
-Listing 3: Predicted availability is 11 days.
-Listing 4: Predicted availability is 7 days.
-Listing 5: Predicted availability is 4 days.
-Listing 6: Predicted availability is 6 days.
 These predictions are on the response scale (availability_30) and represent the expected availability based on the predictors in the original dataset.
 
 ```{r predicted, results='hide'}
@@ -1958,9 +1897,8 @@ comparison <- data.frame(Actual = actual_availability, Predicted = predicted_ava
 head(comparison)  # View the first few rows
 ```
 
-
 Visualization Histogram of Predicted Availability:
-The following graph  shows the most data concentrate in the range 5-10 days
+The following graph shows the most data concentratation.
 
 ```{r Histogram of Predicted Availability, fig.width=4, fig.height=3, echo=FALSE}
 hist(predicted_availability, main = "Distribution of Predicted Availability", 
